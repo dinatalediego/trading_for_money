@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capital OS · Investment + Gold Alpha</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#080b10;--panel:#0f141d;--panel2:#121a25;--line:#223043;
+      --text:#f0f4f8;--muted:#8290a3;--gold:#e5b64c;--green:#43d3a0;
+      --red:#ff6678;--blue:#6aa7ff;--orange:#ffb35c;--violet:#a98bff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at 70% -15%,#1a263c 0,#080b10 38%);
+      color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+    .shell{max-width:1500px;margin:auto;padding:22px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+    .brand{display:flex;gap:12px;align-items:center}.mark{width:44px;height:44px;border:1px solid #705b2a;
+      border-radius:12px;background:#18140c;color:var(--gold);display:grid;place-items:center;font-weight:900}
+    h1{font-size:18px;margin:0;letter-spacing:.07em}.sub{font-size:12px;color:var(--muted);margin-top:4px}
+    .btn{border:1px solid var(--line);background:#111824;color:#fff;padding:9px 12px;border-radius:10px;cursor:pointer;font-weight:700}
+    .btn.gold{background:#261f0f;border-color:#80682d;color:var(--gold)} .btn.green{background:#0c251d;border-color:#24604d;color:var(--green)}
+    .btn.red{background:#291117;border-color:#71303b;color:var(--red)} .btn.ghost{background:transparent}
+    .tabs{display:flex;gap:8px;margin-bottom:14px}.tab{padding:9px 13px;border-radius:999px;border:1px solid var(--line);
+      background:#0c1118;color:var(--muted);cursor:pointer;font-size:12px;font-weight:800}.tab.active{color:#fff;background:#162033;border-color:#3a4c68}
+    .panel{background:linear-gradient(180deg,rgba(18,25,36,.96),rgba(10,14,21,.97));border:1px solid var(--line);
+      border-radius:18px;box-shadow:0 12px 44px rgba(0,0,0,.22)} .pad{padding:18px}
+    .grid{display:grid;grid-template-columns:1.35fr .65fr;gap:14px}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+    .mini{padding:13px;border:1px solid var(--line);border-radius:13px;background:#0a0f16}.k{font-size:10px;color:var(--muted);
+      letter-spacing:.08em;text-transform:uppercase}.v{font-size:20px;font-weight:760;margin-top:5px}.delta{font-size:11px;color:var(--muted);margin-top:4px}
+    .section-title{font-size:13px;font-weight:850;letter-spacing:.05em;margin:0 0 12px}.table{width:100%;border-collapse:collapse}
+    .table th,.table td{padding:10px;border-bottom:1px solid #1d2735;text-align:left;font-size:12px}.table th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em}
+    .pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:850;border:1px solid var(--line)}
+    .core{color:var(--blue);border-color:#2c4f7a;background:#0b1725}.opp{color:var(--violet);border-color:#514077;background:#161124}
+    .cash{color:var(--green);border-color:#225845;background:#0d1d18}.goldlab{color:var(--gold);border-color:#6a5629;background:#1b160d}
+    .barwrap{height:12px;background:#111825;border-radius:999px;overflow:hidden;display:flex;margin:10px 0 14px}
+    .seg{height:100%}.s-core{background:#6aa7ff}.s-opp{background:#a98bff}.s-gold{background:#e5b64c}.s-cash{background:#43d3a0}
+    .narrative{padding:13px;border-radius:13px;border:1px solid var(--line);background:#0a0f16;margin-bottom:9px;font-size:13px;line-height:1.55}
+    .narrative strong{color:#fff}.muted{color:var(--muted)}.good{color:var(--green)}.warn{color:var(--orange)}.bad{color:var(--red)}
+    .formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.field{display:flex;flex-direction:column;gap:5px}
+    label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+    input,select,textarea{width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:#0a0f16;color:#fff}
+    textarea{min-height:70px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .auth{max-width:520px;margin:10vh auto}.auth h2{margin-top:0}.hidden{display:none!important}
+    .goldgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.rigor{font-size:34px;font-weight:900;letter-spacing:-.04em}
+    .stage{font-size:11px;color:var(--gold);font-weight:850;letter-spacing:.08em}.progress{height:8px;background:#171f2b;border-radius:999px;overflow:hidden;margin-top:8px}
+    .progress>div{height:100%;background:linear-gradient(90deg,#6aa7ff,#e5b64c);width:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    .statusdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);margin-right:6px}
+    .right{text-align:right}.scroll{overflow:auto}.error{color:var(--red);font-size:12px;margin-top:8px;white-space:pre-wrap}
+    @media(max-width:1050px){.grid,.goldgrid{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:650px){.cards,.formgrid{grid-template-columns:1fr}.shell{padding:12px}.top{align-items:flex-start}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="top">
+    <div class="brand">
+      <div class="mark">CO</div>
+      <div><h1>CAPITAL OS</h1><div class="sub">Investment Engine + Gold Alpha Engine · connected decision memory</div></div>
+    </div>
+    <div id="userbox" class="hidden">
+      <span class="muted" id="userEmail"></span>
+      <button class="btn ghost" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <section id="authPanel" class="panel pad auth">
+    <div class="stage">PRIVATE PORTFOLIO</div>
+    <h2>Conecta tu Capital OS</h2>
+    <p class="muted">Tu portfolio se guarda en Supabase bajo tu usuario. Las reglas RLS impiden que otro usuario lea o modifique tus posiciones.</p>
+    <div class="field"><label>Email</label><input id="email" type="email" placeholder="tu@email.com"></div>
+    <div class="field" style="margin-top:9px"><label>Contraseña</label><input id="password" type="password" placeholder="••••••••"></div>
+    <div class="actions">
+      <button class="btn green" onclick="login()">Entrar</button>
+      <button class="btn" onclick="signup()">Crear cuenta</button>
+    </div>
+    <div id="authError" class="error"></div>
+  </section>
+
+  <main id="appPanel" class="hidden">
+    <div class="tabs">
+      <button id="tabInvestment" class="tab active" onclick="showTab('investment')">Investment Engine</button>
+      <button id="tabGold" class="tab" onclick="showTab('gold')">Gold Alpha Engine</button>
+    </div>
+
+    <section class="panel pad" style="margin-bottom:14px">
+      <div class="stage">CAPITAL COUNCIL · CONNECTED BRIEF</div>
+      <div id="capitalCouncil" class="narrative" style="margin-top:10px;margin-bottom:0">
+        Conectando Investment Engine y Gold Alpha Engine…
+      </div>
+    </section>
+
+    <section id="investmentTab">
+      <div class="cards">
+        <div class="mini"><div class="k">Patrimonio invertido</div><div class="v" id="netWorth">$0</div><div class="delta">market value</div></div>
+        <div class="mini"><div class="k">Core</div><div class="v" id="coreValue">$0</div><div class="delta" id="coreShare">0%</div></div>
+        <div class="mini"><div class="k">Opportunity</div><div class="v" id="oppValue">$0</div><div class="delta" id="oppShare">0%</div></div>
+        <div class="mini"><div class="k">Gold Lab</div><div class="v" id="goldValue">$0</div><div class="delta" id="goldShare">0%</div></div>
+        <div class="mini"><div class="k">Aporte mensual</div><div class="v" id="monthlyContribution">$0</div><div class="delta">planificado</div></div>
+      </div>
+
+      <div class="grid" style="margin-top:14px">
+        <section class="panel pad">
+          <h3 class="section-title">PORTFOLIO · REAL DATABASE</h3>
+          <div class="barwrap"><div id="segCore" class="seg s-core"></div><div id="segOpp" class="seg s-opp"></div><div id="segGold" class="seg s-gold"></div><div id="segCash" class="seg s-cash"></div></div>
+          <div class="scroll"><table class="table">
+            <thead><tr><th>Activo</th><th>Motor</th><th>Cantidad</th><th>Precio</th><th>Valor</th><th>P&L</th><th></th></tr></thead>
+            <tbody id="positionsBody"></tbody>
+          </table></div>
+          <div class="actions"><button class="btn gold" onclick="toggle('positionForm')">+ Añadir posición</button><button class="btn" onclick="refreshAll()">Actualizar mercado</button></div>
+
+          <div id="positionForm" class="hidden" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+            <div class="formgrid">
+              <div class="field"><label>Cuenta</label><select id="posAccount"></select></div>
+              <div class="field"><label>Bucket</label><select id="posBucket"><option>CORE</option><option>OPPORTUNITY</option><option>CASH</option><option>GOLD_LAB</option></select></div>
+              <div class="field"><label>Símbolo</label><input id="posSymbol" placeholder="SPY, QQQ, GLD..."></div>
+              <div class="field"><label>Nombre</label><input id="posName" placeholder="S&P 500 ETF"></div>
+              <div class="field"><label>Cantidad</label><input id="posQty" type="number" step="any" value="0"></div>
+              <div class="field"><label>Costo promedio</label><input id="posCost" type="number" step="any"></div>
+              <div class="field"><label>Precio manual (opcional)</label><input id="posManualPrice" type="number" step="any"></div>
+              <div class="field"><label>Asset class</label><select id="posClass"><option value="etf">ETF</option><option value="equity">Equity</option><option value="cash">Cash</option><option value="commodity">Commodity</option><option value="crypto">Crypto</option><option value="other">Other</option></select></div>
+              <div class="field"><label>Tesis</label><textarea id="posThesis" placeholder="Por qué existe esta posición"></textarea></div>
+              <div class="field"><label>Invalidación</label><textarea id="posInvalidation" placeholder="Qué me haría revisar o salir"></textarea></div>
+            </div>
+            <div class="actions"><button class="btn green" onclick="savePosition()">Guardar posición</button></div>
+          </div>
+        </section>
+
+        <aside>
+          <section class="panel pad">
+            <h3 class="section-title">PORTFOLIO BRIEF</h3>
+            <div id="portfolioBrief"></div>
+          </section>
+          <section class="panel pad" style="margin-top:14px">
+            <h3 class="section-title">POLÍTICA DE CAPITAL</h3>
+            <div class="formgrid">
+              <div class="field"><label>Aporte mensual USD</label><input id="setContribution" type="number" step="any"></div>
+              <div class="field"><label>Core %</label><input id="setCore" type="number" step="1"></div>
+              <div class="field"><label>Opportunity %</label><input id="setOpp" type="number" step="1"></div>
+              <div class="field"><label>Gold Lab %</label><input id="setGold" type="number" step="1"></div>
+              <div class="field"><label>Cash %</label><input id="setCash" type="number" step="1"></div>
+            </div>
+            <div class="actions"><button class="btn green" onclick="saveSettings()">Guardar política</button></div>
+            <div id="settingsError" class="error"></div>
+          </section>
+          <section class="panel pad" style="margin-top:14px">
+            <h3 class="section-title">METAS</h3>
+            <div id="goalsList" class="muted">Sin metas todavía.</div>
+            <div class="actions"><button class="btn" onclick="toggle('goalForm')">+ Meta</button></div>
+            <div id="goalForm" class="hidden" style="margin-top:10px">
+              <div class="field"><label>Meta</label><input id="goalName" placeholder="Capital de largo plazo"></div>
+              <div class="field" style="margin-top:7px"><label>Monto objetivo USD</label><input id="goalAmount" type="number" step="any"></div>
+              <div class="field" style="margin-top:7px"><label>Fecha objetivo</label><input id="goalDate" type="date"></div>
+              <div class="actions"><button class="btn green" onclick="saveGoal()">Guardar</button></div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section id="goldTab" class="hidden">
+      <div class="cards">
+        <div class="mini"><div class="k">Gold signal</div><div class="v" id="gSignal">—</div><div class="delta" id="gPrice">—</div></div>
+        <div class="mini"><div class="k">Closed trades</div><div class="v" id="gTrades">0</div><div class="delta" id="gWinRate">win rate —</div></div>
+        <div class="mini"><div class="k">Expectancy</div><div class="v" id="gExpectancy">—</div><div class="delta">R / trade</div></div>
+        <div class="mini"><div class="k">Cumulative Alpha</div><div class="v" id="gCumR">0R</div><div class="delta">paper only</div></div>
+        <div class="mini"><div class="k">Worker</div><div class="v" id="gWorker">—</div><div class="delta" id="gLastRun">—</div></div>
+      </div>
+
+      <div class="goldgrid" style="margin-top:14px">
+        <section class="panel pad">
+          <div class="stage">RIGOR ENGINE</div>
+          <div class="rigor" id="rigorScore">0 / 100</div>
+          <div class="progress"><div id="rigorFill"></div></div>
+          <div id="rigorNarrative" style="margin-top:14px"></div>
+        </section>
+        <section class="panel pad">
+          <h3 class="section-title">WHAT THE SYSTEM IS BUILDING</h3>
+          <div id="goldBrief"></div>
+        </section>
+      </div>
+
+      <div class="grid" style="margin-top:14px">
+        <section class="panel pad">
+          <h3 class="section-title">RECENT PAPER TRADES</h3>
+          <div class="scroll"><table class="table">
+            <thead><tr><th>Opened</th><th>Side</th><th>Status</th><th>Entry</th><th>Exit</th><th>Result R</th><th>Reason</th></tr></thead>
+            <tbody id="goldTradesBody"></tbody>
+          </table></div>
+        </section>
+        <aside class="panel pad">
+          <h3 class="section-title">RECENT DECISIONS</h3>
+          <div id="decisionsList"></div>
+          <div class="actions"><a class="btn gold" href="/gold">Abrir terminal GOLD</a></div>
+        </aside>
+      </div>
+    </section>
+    <div id="appError" class="error"></div>
+  </main>
+</div>
+
+<script>
+const SUPABASE_URL = "https://tlyczyfsboqrtrdpwizp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_gMTGwNPjdwgNuzzRPpUPyA_ezrPfCrT";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let session=null, accounts=[], positions=[], settings=null, goals=[], quotes={}, goldState=null;
+
+const fmtMoney=(v)=>'$'+Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2});
+const fmt=(v,d=2)=>v==null?'—':Number(v).toFixed(d);
+const pct=(v)=>((Number(v)||0)*100).toFixed(1)+'%';
+const el=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function toggle(id){el(id).classList.toggle('hidden')}
+function showTab(tab){
+  el('investmentTab').classList.toggle('hidden',tab!=='investment');
+  el('goldTab').classList.toggle('hidden',tab!=='gold');
+  el('tabInvestment').classList.toggle('active',tab==='investment');
+  el('tabGold').classList.toggle('active',tab==='gold');
+  if(tab==='gold') loadGold();
+}
+async function login(){
+  el('authError').textContent='';
+  const {data,error}=await sb.auth.signInWithPassword({email:el('email').value,password:el('password').value});
+  if(error){el('authError').textContent=error.message;return}
+  session=data.session; boot();
+}
+async function signup(){
+  el('authError').textContent='';
+  const {data,error}=await sb.auth.signUp({email:el('email').value,password:el('password').value});
+  if(error){el('authError').textContent=error.message;return}
+  if(!data.session){el('authError').textContent='Cuenta creada. Revisa tu correo si Supabase solicita confirmación.';return}
+  session=data.session; boot();
+}
+async function logout(){await sb.auth.signOut();location.reload()}
+async function ensureDefaults(){
+  let {data:a}=await sb.from('tfm_investment_accounts').select('*').eq('is_active',true).order('created_at');
+  accounts=a||[];
+  if(!accounts.length){
+    const {data:newA,error}=await sb.from('tfm_investment_accounts').insert({name:'Main Portfolio',institution:'',account_type:'broker',currency:'USD'}).select().single();
+    if(error) throw error; accounts=[newA];
+  }
+  let {data:s}=await sb.from('tfm_investment_settings').select('*').maybeSingle();
+  if(!s){
+    const {data:newS,error}=await sb.from('tfm_investment_settings').insert({}).select().single();
+    if(error) throw error; s=newS;
+  }
+  settings=s;
+}
+async function boot(){
+  el('authPanel').classList.add('hidden');el('appPanel').classList.remove('hidden');el('userbox').classList.remove('hidden');
+  el('userEmail').textContent=session.user.email||'';
+  try{await ensureDefaults();await refreshAll();await loadGold();renderInvestment();}catch(e){el('appError').textContent=e.message}
+}
+async function refreshAll(){
+  el('appError').textContent='';
+  try{
+    const [p,g,a]=await Promise.all([
+      sb.from('tfm_investment_positions').select('*').eq('is_active',true).order('created_at'),
+      sb.from('tfm_investment_goals').select('*').eq('is_active',true).order('priority'),
+      sb.from('tfm_investment_accounts').select('*').eq('is_active',true).order('created_at')
+    ]);
+    if(p.error) throw p.error;if(g.error) throw g.error;if(a.error) throw a.error;
+    positions=p.data||[];goals=g.data||[];accounts=a.data||[];
+    el('posAccount').innerHTML=accounts.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('');
+    const syms=[...new Set(positions.filter(x=>!x.manual_price&&x.asset_class!=='cash').map(x=>x.symbol.trim().toUpperCase()))];
+    quotes={};
+    if(syms.length){
+      const r=await fetch('/api/quotes?symbols='+encodeURIComponent(syms.join(',')),{cache:'no-store'});
+      if(r.ok){const q=await r.json();quotes=q.quotes||{}}
+    }
+    renderInvestment();
+  }catch(e){el('appError').textContent=e.message}
+}
+function positionPrice(p){
+  if(p.manual_price!=null) return Number(p.manual_price);
+  if(p.asset_class==='cash') return 1;
+  return Number(quotes[p.symbol.toUpperCase()]?.price||p.avg_cost||0);
+}
+function renderInvestment(){
+  const rows=positions.map(p=>{
+    const price=positionPrice(p),value=Number(p.quantity)*price,cost=Number(p.quantity)*Number(p.avg_cost||0),pnl=value-cost;
+    return {...p,price,value,pnl};
+  });
+  const total=rows.reduce((s,x)=>s+x.value,0);
+  const by={CORE:0,OPPORTUNITY:0,GOLD_LAB:0,CASH:0};rows.forEach(x=>by[x.bucket]=(by[x.bucket]||0)+x.value);
+  el('netWorth').textContent=fmtMoney(total);el('coreValue').textContent=fmtMoney(by.CORE);el('oppValue').textContent=fmtMoney(by.OPPORTUNITY);
+  el('goldValue').textContent=fmtMoney(by.GOLD_LAB);el('monthlyContribution').textContent=fmtMoney(settings.monthly_contribution);
+  const share=k=>total?by[k]/total:0;el('coreShare').textContent=pct(share('CORE'));el('oppShare').textContent=pct(share('OPPORTUNITY'));el('goldShare').textContent=pct(share('GOLD_LAB'));
+  el('segCore').style.width=(share('CORE')*100)+'%';el('segOpp').style.width=(share('OPPORTUNITY')*100)+'%';el('segGold').style.width=(share('GOLD_LAB')*100)+'%';el('segCash').style.width=(share('CASH')*100)+'%';
+  const badge={CORE:'core',OPPORTUNITY:'opp',CASH:'cash',GOLD_LAB:'goldlab'};
+  el('positionsBody').innerHTML=rows.length?rows.map(x=>`<tr><td><b>${esc(x.symbol)}</b><div class="muted">${esc(x.asset_name||'')}</div></td><td><span class="pill ${badge[x.bucket]}">${x.bucket}</span></td><td>${fmt(x.quantity,4)}</td><td>${fmtMoney(x.price)}</td><td><b>${fmtMoney(x.value)}</b></td><td class="${x.pnl>=0?'good':'bad'}">${fmtMoney(x.pnl)}</td><td><button class="btn red" onclick="deletePosition('${x.id}')">×</button></td></tr>`).join(''):'<tr><td colspan="7" class="muted">Añade tu primera posición. Tu portfolio aún está vacío.</td></tr>';
+  el('setContribution').value=settings.monthly_contribution||0;el('setCore').value=(settings.target_core*100).toFixed(0);el('setOpp').value=(settings.target_opportunity*100).toFixed(0);
+  el('setGold').value=(settings.target_gold_lab*100).toFixed(0);el('setCash').value=(settings.target_cash*100).toFixed(0);
+  renderBrief(total,by);renderGoals(total);renderCapitalCouncil(total);
+}
+function renderCapitalCouncil(total=null){
+  if(total==null && positions.length){
+    total=positions.reduce((s,p)=>s+Number(p.quantity||0)*positionPrice(p),0);
+  }
+  const closed=goldState?.trades?.filter(t=>t.status==='CLOSED')||[];
+  const wins=closed.filter(t=>Number(t.pnl_r)>0).length;
+  const exp=closed.length?closed.reduce((a,t)=>a+Number(t.pnl_r||0),0)/closed.length:null;
+  const signal=goldState?.snap?.latest?.signal||'—';
+  const worker=goldState?.runs?.[0]?.status||'—';
+  const portfolioText=total==null
+    ? 'Investment Engine conectado; esperando valoración del portfolio.'
+    : total>0
+      ? `Investment Engine registra <strong>${fmtMoney(total)}</strong> de market value.`
+      : 'Investment Engine está conectado pero todavía no registra posiciones.';
+  const alphaText=closed.length
+    ? `Gold Alpha acumula <strong>${closed.length} paper trades</strong>, win rate ${(wins/closed.length*100).toFixed(1)}% y expectancy ${fmt(exp,2)}R.`
+    : 'Gold Alpha está acumulando memoria, pero aún no tiene paper trades cerrados.';
+  const gate=closed.length<100
+    ? 'El sistema <strong>no ha ganado todavía</strong> el derecho de aumentar autonomía o capital: sigue en fase de evidencia.'
+    : 'El primer gate de muestra ya fue superado; ahora importa estabilidad fuera de muestra, costos y drawdown.';
+  el('capitalCouncil').innerHTML=`${portfolioText} ${alphaText} Señal GOLD actual: <strong>${signal}</strong>. Worker: <strong>${worker}</strong>. ${gate}`;
+}
+
+function renderBrief(total,by){
+  const targets={CORE:settings.target_core,OPPORTUNITY:settings.target_opportunity,GOLD_LAB:settings.target_gold_lab,CASH:settings.target_cash};
+  if(!total){el('portfolioBrief').innerHTML='<div class="narrative"><strong>Inicio.</strong> La base está conectada, pero todavía no hay capital registrado. Añade posiciones para que el sistema pueda hablar sobre tu cartera real.</div>';return}
+  const actual=k=>by[k]/total;
+  const largest=Object.entries(by).sort((a,b)=>b[1]-a[1])[0];
+  const gaps=Object.keys(targets).map(k=>({k,g:actual(k)-targets[k]})).sort((a,b)=>Math.abs(b.g)-Math.abs(a.g));
+  const g=gaps[0];
+  const direction=g.g>0?'por encima':'por debajo';
+  const contribution=Number(settings.monthly_contribution||0);
+  const goldClosed=goldState?.trades?.filter(t=>t.status==='CLOSED').length||0;
+  const alphaNote=goldClosed<100
+    ? `Gold Alpha sigue en <strong>fase de evidencia</strong> (${goldClosed}/100 trades mínimos del primer gate). El bucket GOLD_LAB debe tratarse como capital experimental, no como Core.`
+    : `Gold Alpha ya superó el primer gate de muestra con <strong>${goldClosed} trades</strong>; el siguiente criterio es expectancy neta y estabilidad por régimen.`;
+  el('portfolioBrief').innerHTML=
+    `<div class="narrative"><strong>Capital actual:</strong> ${fmtMoney(total)}. El motor dominante es <strong>${largest[0]}</strong> con ${pct(largest[1]/total)} del portfolio.</div>`+
+    `<div class="narrative"><strong>Mayor desviación:</strong> ${g.k} está ${direction} de su política objetivo por <span class="${Math.abs(g.g)>0.08?'warn':'good'}">${Math.abs(g.g*100).toFixed(1)} pp</span>.</div>`+
+    `<div class="narrative"><strong>Conexión Investment ↔ Alpha:</strong> ${alphaNote}</div>`+
+    `<div class="narrative"><strong>Próximo aporte:</strong> con ${fmtMoney(contribution)} mensuales, el sistema debe priorizar primero los buckets infraponderados antes de aumentar riesgo táctico.</div>`;
+}
+function renderGoals(total){
+  el('goalsList').innerHTML=goals.length?goals.map(g=>{
+    const pr=Math.min(1,total/Number(g.target_amount));return `<div class="narrative"><strong>${esc(g.name)}</strong><div class="muted">${fmtMoney(total)} / ${fmtMoney(g.target_amount)} · ${pct(pr)} ${g.target_date?'· '+g.target_date:''}</div></div>`;
+  }).join(''):'<div class="muted">Sin metas todavía.</div>';
+}
+async function savePosition(){
+  const payload={account_id:el('posAccount').value,bucket:el('posBucket').value,symbol:el('posSymbol').value.trim().toUpperCase(),asset_name:el('posName').value.trim(),
+    asset_class:el('posClass').value,quantity:Number(el('posQty').value||0),avg_cost:el('posCost').value?Number(el('posCost').value):null,
+    manual_price:el('posManualPrice').value?Number(el('posManualPrice').value):null,thesis:el('posThesis').value.trim(),invalidation:el('posInvalidation').value.trim()};
+  if(!payload.symbol){el('appError').textContent='El símbolo es obligatorio.';return}
+  const {error}=await sb.from('tfm_investment_positions').insert(payload);if(error){el('appError').textContent=error.message;return}
+  el('positionForm').classList.add('hidden');await refreshAll();
+}
+async function deletePosition(id){if(!confirm('¿Desactivar esta posición?'))return;const {error}=await sb.from('tfm_investment_positions').update({is_active:false}).eq('id',id);if(error){el('appError').textContent=error.message;return}await refreshAll()}
+async function saveSettings(){
+  el('settingsError').textContent='';
+  const vals=[Number(el('setCore').value),Number(el('setOpp').value),Number(el('setGold').value),Number(el('setCash').value)];
+  if(Math.abs(vals.reduce((a,b)=>a+b,0)-100)>.01){el('settingsError').textContent='Los cuatro porcentajes deben sumar 100%.';return}
+  const payload={monthly_contribution:Number(el('setContribution').value||0),target_core:vals[0]/100,target_opportunity:vals[1]/100,target_gold_lab:vals[2]/100,target_cash:vals[3]/100,updated_at:new Date().toISOString()};
+  const {data,error}=await sb.from('tfm_investment_settings').update(payload).eq('owner_id',session.user.id).select().single();
+  if(error){el('settingsError').textContent=error.message;return}settings=data;renderInvestment();
+}
+async function saveGoal(){
+  const payload={name:el('goalName').value.trim(),target_amount:Number(el('goalAmount').value),target_date:el('goalDate').value||null};
+  if(!payload.name||!payload.target_amount)return;
+  const {error}=await sb.from('tfm_investment_goals').insert(payload);if(error){el('appError').textContent=error.message;return}
+  el('goalForm').classList.add('hidden');await refreshAll();
+}
+
+async function loadGold(){
+  try{
+    const [snap,st,tr,wr,decs]=await Promise.all([
+      fetch('/api/gold?interval=1m&range=1d',{cache:'no-store'}).then(r=>r.json()),
+      sb.from('tfm_agent_state').select('*').eq('agent_key','gold_scalper_v1').maybeSingle(),
+      sb.from('tfm_paper_trades').select('*').eq('strategy_version','gold_scalper_v1').order('opened_at',{ascending:false}).limit(50),
+      sb.from('tfm_worker_runs').select('*').order('started_at',{ascending:false}).limit(10),
+      sb.from('tfm_signal_decisions').select('*').eq('strategy_version','gold_scalper_v1').order('bar_time',{ascending:false}).limit(12)
+    ]);
+    goldState={snap,state:st.data,trades:tr.data||[],runs:wr.data||[],decisions:decs.data||[]};renderGold();
+  }catch(e){el('appError').textContent=e.message}
+}
+function renderGold(){
+  const x=goldState.snap.latest,s=goldState.state||{},closed=goldState.trades.filter(t=>t.status==='CLOSED'),wins=closed.filter(t=>Number(t.pnl_r)>0);
+  const exp=closed.length?closed.reduce((a,t)=>a+Number(t.pnl_r||0),0)/closed.length:0,cum=closed.reduce((a,t)=>a+Number(t.pnl_r||0),0);
+  el('gSignal').textContent=x.signal;el('gPrice').textContent=fmtMoney(x.price)+' · '+x.regime;el('gTrades').textContent=closed.length;el('gWinRate').textContent='win rate '+(closed.length?(wins.length/closed.length*100).toFixed(1)+'%':'—');
+  el('gExpectancy').textContent=closed.length?fmt(exp,2)+'R':'—';el('gCumR').textContent=fmt(cum,2)+'R';
+  const last=goldState.runs[0];el('gWorker').innerHTML=(last?.status==='SUCCESS'?'<span class="good">ONLINE</span>':'<span class="warn">'+esc(last?.status||'NO DATA')+'</span>');el('gLastRun').textContent=last?.started_at?new Date(last.started_at).toLocaleString():'—';
+  const sampleScore=Math.min(35,closed.length/100*35),edgeScore=closed.length>=20?Math.max(0,Math.min(35,(exp+0.1)/0.4*35)):0,disciplineScore=(s.consecutive_losses||0)<4?20:5,workerScore=last?.status==='SUCCESS'?10:0;
+  const rigor=Math.round(sampleScore+edgeScore+disciplineScore+workerScore);el('rigorScore').textContent=rigor+' / 100';el('rigorFill').style.width=rigor+'%';
+  let stage=closed.length<30?'DATA COLLECTION':closed.length<100?'EARLY EVIDENCE':closed.length<500?'PAPER VALIDATION':'MATURE PAPER SAMPLE';
+  el('rigorNarrative').innerHTML=`<div class="narrative"><span class="stage">${stage}</span><br><strong>${closed.length}</strong> trades cerrados. ${closed.length<100?'Todavía no hay muestra suficiente para tratar la rentabilidad observada como un edge estable.':'Ya existe una muestra útil; el siguiente criterio es estabilidad por régimen y fuera de muestra.'}</div>`+
+    `<div class="narrative"><strong>Expectancy:</strong> ${closed.length?fmt(exp,2)+'R':'sin estimar'}. <strong>Riesgo:</strong> ${Number(s.consecutive_losses||0)} pérdidas consecutivas actuales; pausa automática al llegar a 4.</div>`;
+  const decisions=goldState.decisions;const buy=decisions.filter(d=>d.action==='BUY').length,sell=decisions.filter(d=>d.action==='SELL').length,flat=decisions.filter(d=>d.action==='FLAT').length;
+  el('goldBrief').innerHTML=`<div class="narrative"><strong>El sistema está construyendo memoria causal.</strong> Cada minuto guarda estado de mercado → decisión → resultado posterior.</div>`+
+    `<div class="narrative"><strong>Últimas decisiones:</strong> BUY ${buy}, SELL ${sell}, FLAT ${flat}. Permanecer FLAT también cuenta como disciplina; el motor no fuerza operaciones.</div>`+
+    `<div class="narrative"><strong>Estado actual:</strong> señal ${x.signal}, long score ${x.long_score}/100, short score ${x.short_score}/100. Feed: ${x.feed_state}.</div>`;
+  el('goldTradesBody').innerHTML=goldState.trades.length?goldState.trades.map(t=>`<tr><td>${new Date(t.opened_at).toLocaleString()}</td><td><b>${t.side}</b></td><td>${t.status}</td><td>${fmt(t.entry_price)}</td><td>${fmt(t.exit_price)}</td><td class="${Number(t.pnl_r)>=0?'good':'bad'}">${t.pnl_r==null?'—':fmt(t.pnl_r)+'R'}</td><td>${esc(t.exit_reason||'—')}</td></tr>`).join(''):'<tr><td colspan="7" class="muted">Aún no hay paper trades persistentes.</td></tr>';
+  renderCapitalCouncil();\n  el('decisionsList').innerHTML=decisions.length?decisions.slice(0,8).map(d=>`<div class="narrative"><strong>${d.action}</strong> · confidence ${d.confidence}/100<div class="muted">${new Date(d.bar_time).toLocaleString()} · L ${d.long_score} / S ${d.short_score}</div></div>`).join(''):'<div class="muted">Sin decisiones registradas.</div>';
+}
+(async()=>{
+  const {data}=await sb.auth.getSession();session=data.session;
+  if(session) boot();
+  sb.auth.onAuthStateChange((_event,s)=>{session=s;if(s&&!el('appPanel').classList.contains('hidden'))return;if(s)boot()});
+})();
+</script>
+</body>
+</html>
