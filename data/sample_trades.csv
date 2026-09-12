@@ -1,0 +1,12 @@
+trade_id,closed_at,symbol,side,volume,entry_price,exit_price,pnl,source,notes
+shot_001,2026-08-31 08:09:37,XAUUSD.f,sell,0.079344,4425.37,4419.78,44.35,screenshot_initial,Visible completed trade
+shot_002,2026-09-01 09:05:54,XAUUSD.f,sell,0.079365,4440.12,4438.12,15.87,screenshot_initial,Visible completed trade
+shot_003,2026-09-02 11:50:28,XAUUSD.f,buy,0.079369,4319.11,4320.49,10.95,screenshot_initial,Visible completed trade
+shot_004,2026-09-02 18:25:56,XAUUSD.f,buy,0.079362,4366.67,4369.27,20.63,screenshot_initial,Visible completed trade
+shot_005,2026-09-03 08:52:15,XAUUSD.f,sell,0.079399,4434.66,4438.31,-28.98,screenshot_initial,Visible completed trade
+shot_006,2026-09-03 12:57:10,XAUUSD.f,sell,0.079334,4434.76,4427.47,57.83,screenshot_initial,Visible completed trade
+shot_007,2026-09-04 15:48:05,XAUUSD.f,sell,0.079271,4401.75,4383.98,140.86,screenshot_initial,Visible completed trade
+shot_008,2026-09-07 10:05:53,XAUUSD.f,buy,0.079293,4394.74,4399.23,35.60,screenshot_initial,Visible completed trade
+shot_009,2026-09-08 20:29:05,XAUUSD.f,sell,0.079293,4399.59,4395.21,34.73,screenshot_initial,Visible completed trade
+shot_010,2026-09-09 16:15:54,XAUUSD.f,buy,0.079272,4404.63,4412.51,62.47,screenshot_initial,Visible completed trade
+shot_011,2026-09-10 23:02:43,XAUUSD.f,sell,0.079285,4329.05,4323.24,46.06,screenshot_initial,Visible completed trade
