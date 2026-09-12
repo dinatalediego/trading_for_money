@@ -10,6 +10,7 @@ import httpx
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
@@ -19,6 +20,12 @@ if str(SRC) not in sys.path:
 from trading_for_money.scalping.backtest import BacktestConfig, run_backtest
 from trading_for_money.scalping.costs import CostModel
 from trading_for_money.scalping.strategy import ScalpingConfig, generate_signals
+from trading_for_money.allocation import (
+    AllocationInput,
+    GoldEvidence,
+    GoalInput,
+    build_allocation_plan,
+)
 
 
 app = FastAPI(
@@ -197,7 +204,7 @@ async def health():
     return {
         "ok": True,
         "service": "gold-scalping-intelligence",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "execution": "paper-only",
     }
 
@@ -225,6 +232,74 @@ async def gold_snapshot(
         "latest": latest,
         "bars": bar_records(signals),
     }
+
+
+class AllocationGoalRequest(BaseModel):
+    name: str
+    target_amount: float = Field(gt=0)
+    target_date: str | None = None
+    priority: int = Field(default=1, ge=1, le=5)
+
+
+class AllocationGoldRequest(BaseModel):
+    closed_trades: int = Field(default=0, ge=0)
+    expectancy_r: float | None = None
+    profit_factor: float | None = None
+    max_drawdown_r: float | None = Field(default=None, ge=0)
+    worker_healthy: bool = False
+
+
+class AllocationRequest(BaseModel):
+    contribution_amount: float = Field(ge=0)
+    bucket_values: dict[str, float]
+    target_weights: dict[str, float]
+    goals: list[AllocationGoalRequest] = []
+    gold: AllocationGoldRequest = AllocationGoldRequest()
+    opportunity_thesis_coverage: float = Field(default=0, ge=0, le=1)
+    base_currency: str = Field(default="USD", min_length=3, max_length=3)
+
+
+@app.post("/api/allocation")
+async def capital_allocation(request: AllocationRequest):
+    from datetime import date
+
+    try:
+        goals = []
+        for goal in request.goals:
+            target_date = (
+                date.fromisoformat(goal.target_date)
+                if goal.target_date
+                else None
+            )
+            goals.append(
+                GoalInput(
+                    name=goal.name,
+                    target_amount=goal.target_amount,
+                    target_date=target_date,
+                    priority=goal.priority,
+                )
+            )
+
+        plan = build_allocation_plan(
+            AllocationInput(
+                contribution_amount=request.contribution_amount,
+                bucket_values=request.bucket_values,
+                target_weights=request.target_weights,
+                goals=tuple(goals),
+                gold=GoldEvidence(
+                    closed_trades=request.gold.closed_trades,
+                    expectancy_r=request.gold.expectancy_r,
+                    profit_factor=request.gold.profit_factor,
+                    max_drawdown_r=request.gold.max_drawdown_r,
+                    worker_healthy=request.gold.worker_healthy,
+                ),
+                opportunity_thesis_coverage=request.opportunity_thesis_coverage,
+                base_currency=request.base_currency.upper(),
+            )
+        )
+        return plan.to_dict()
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/api/quotes")
