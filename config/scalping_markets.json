@@ -1,0 +1,19 @@
+{
+  "profiles": {
+    "XAUUSD_RESEARCH": {
+      "asset_class": "gold_fx_cfd_or_spot_feed",
+      "preferred_timeframes": ["1m", "5m", "15m"],
+      "notes": "Calibrate costs and symbol contract metadata to the actual broker feed. Macro releases can materially change spread and slippage."
+    },
+    "NASDAQ_RESEARCH": {
+      "asset_class": "nasdaq_index_or_futures_proxy",
+      "preferred_timeframes": ["1m", "5m", "15m"],
+      "notes": "Do not mix NQ/MNQ/QQQ cost or contract assumptions. Each feed requires its own calibration."
+    },
+    "LIQUID_TECH_RESEARCH": {
+      "asset_class": "equity",
+      "preferred_timeframes": ["1m", "5m"],
+      "notes": "Use only sufficiently liquid names in research. Market open/close behavior should be evaluated separately."
+    }
+  }
+}
