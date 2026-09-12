@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date
 from math import isfinite
 from typing import Mapping, Sequence
@@ -36,7 +36,7 @@ class AllocationInput:
     gold: GoldEvidence = GoldEvidence()
     opportunity_thesis_coverage: float = 0.0
     base_currency: str = "USD"
-    as_of: date = date.today()
+    as_of: date = field(default_factory=date.today)
 
 
 @dataclass(frozen=True)
