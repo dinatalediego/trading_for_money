@@ -84,6 +84,13 @@
       <button id="tabGold" class="tab" onclick="showTab('gold')">Gold Alpha Engine</button>
     </div>
 
+    <section class="panel pad" style="margin-bottom:14px">
+      <div class="stage">CAPITAL COUNCIL · CONNECTED BRIEF</div>
+      <div id="capitalCouncil" class="narrative" style="margin-top:10px;margin-bottom:0">
+        Conectando Investment Engine y Gold Alpha Engine…
+      </div>
+    </section>
+
     <section id="investmentTab">
       <div class="cards">
         <div class="mini"><div class="k">Patrimonio invertido</div><div class="v" id="netWorth">$0</div><div class="delta">market value</div></div>
@@ -285,8 +292,28 @@ function renderInvestment(){
   el('positionsBody').innerHTML=rows.length?rows.map(x=>`<tr><td><b>${esc(x.symbol)}</b><div class="muted">${esc(x.asset_name||'')}</div></td><td><span class="pill ${badge[x.bucket]}">${x.bucket}</span></td><td>${fmt(x.quantity,4)}</td><td>${fmtMoney(x.price)}</td><td><b>${fmtMoney(x.value)}</b></td><td class="${x.pnl>=0?'good':'bad'}">${fmtMoney(x.pnl)}</td><td><button class="btn red" onclick="deletePosition('${x.id}')">×</button></td></tr>`).join(''):'<tr><td colspan="7" class="muted">Añade tu primera posición. Tu portfolio aún está vacío.</td></tr>';
   el('setContribution').value=settings.monthly_contribution||0;el('setCore').value=(settings.target_core*100).toFixed(0);el('setOpp').value=(settings.target_opportunity*100).toFixed(0);
   el('setGold').value=(settings.target_gold_lab*100).toFixed(0);el('setCash').value=(settings.target_cash*100).toFixed(0);
-  renderBrief(total,by);renderGoals(total);
+  renderBrief(total,by);renderGoals(total);renderCapitalCouncil(total);
 }
+function renderCapitalCouncil(total=null){
+  const closed=goldState?.trades?.filter(t=>t.status==='CLOSED')||[];
+  const wins=closed.filter(t=>Number(t.pnl_r)>0).length;
+  const exp=closed.length?closed.reduce((a,t)=>a+Number(t.pnl_r||0),0)/closed.length:null;
+  const signal=goldState?.snap?.latest?.signal||'—';
+  const worker=goldState?.runs?.[0]?.status||'—';
+  const portfolioText=total==null
+    ? 'Investment Engine conectado; esperando valoración del portfolio.'
+    : total>0
+      ? `Investment Engine registra <strong>${fmtMoney(total)}</strong> de market value.`
+      : 'Investment Engine está conectado pero todavía no registra posiciones.';
+  const alphaText=closed.length
+    ? `Gold Alpha acumula <strong>${closed.length} paper trades</strong>, win rate ${(wins/closed.length*100).toFixed(1)}% y expectancy ${fmt(exp,2)}R.`
+    : 'Gold Alpha está acumulando memoria, pero aún no tiene paper trades cerrados.';
+  const gate=closed.length<100
+    ? 'El sistema <strong>no ha ganado todavía</strong> el derecho de aumentar autonomía o capital: sigue en fase de evidencia.'
+    : 'El primer gate de muestra ya fue superado; ahora importa estabilidad fuera de muestra, costos y drawdown.';
+  el('capitalCouncil').innerHTML=`${portfolioText} ${alphaText} Señal GOLD actual: <strong>${signal}</strong>. Worker: <strong>${worker}</strong>. ${gate}`;
+}
+
 function renderBrief(total,by){
   const targets={CORE:settings.target_core,OPPORTUNITY:settings.target_opportunity,GOLD_LAB:settings.target_gold_lab,CASH:settings.target_cash};
   if(!total){el('portfolioBrief').innerHTML='<div class="narrative"><strong>Inicio.</strong> La base está conectada, pero todavía no hay capital registrado. Añade posiciones para que el sistema pueda hablar sobre tu cartera real.</div>';return}
@@ -363,7 +390,7 @@ function renderGold(){
     `<div class="narrative"><strong>Últimas decisiones:</strong> BUY ${buy}, SELL ${sell}, FLAT ${flat}. Permanecer FLAT también cuenta como disciplina; el motor no fuerza operaciones.</div>`+
     `<div class="narrative"><strong>Estado actual:</strong> señal ${x.signal}, long score ${x.long_score}/100, short score ${x.short_score}/100. Feed: ${x.feed_state}.</div>`;
   el('goldTradesBody').innerHTML=goldState.trades.length?goldState.trades.map(t=>`<tr><td>${new Date(t.opened_at).toLocaleString()}</td><td><b>${t.side}</b></td><td>${t.status}</td><td>${fmt(t.entry_price)}</td><td>${fmt(t.exit_price)}</td><td class="${Number(t.pnl_r)>=0?'good':'bad'}">${t.pnl_r==null?'—':fmt(t.pnl_r)+'R'}</td><td>${esc(t.exit_reason||'—')}</td></tr>`).join(''):'<tr><td colspan="7" class="muted">Aún no hay paper trades persistentes.</td></tr>';
-  el('decisionsList').innerHTML=decisions.length?decisions.slice(0,8).map(d=>`<div class="narrative"><strong>${d.action}</strong> · confidence ${d.confidence}/100<div class="muted">${new Date(d.bar_time).toLocaleString()} · L ${d.long_score} / S ${d.short_score}</div></div>`).join(''):'<div class="muted">Sin decisiones registradas.</div>';
+  renderCapitalCouncil();\n  el('decisionsList').innerHTML=decisions.length?decisions.slice(0,8).map(d=>`<div class="narrative"><strong>${d.action}</strong> · confidence ${d.confidence}/100<div class="muted">${new Date(d.bar_time).toLocaleString()} · L ${d.long_score} / S ${d.short_score}</div></div>`).join(''):'<div class="muted">Sin decisiones registradas.</div>';
 }
 (async()=>{
   const {data}=await sb.auth.getSession();session=data.session;
