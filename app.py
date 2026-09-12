@@ -197,7 +197,7 @@ async def health():
     return {
         "ok": True,
         "service": "gold-scalping-intelligence",
-        "version": "0.4.0",
+        "version": "0.6.0",
         "execution": "paper-only",
     }
 
@@ -224,6 +224,47 @@ async def gold_snapshot(
         ),
         "latest": latest,
         "bars": bar_records(signals),
+    }
+
+
+@app.get("/api/quotes")
+async def market_quotes(
+    symbols: str = Query(default="", max_length=300),
+):
+    requested = []
+    for raw in symbols.split(","):
+        symbol = raw.strip().upper()
+        if symbol and symbol not in requested:
+            requested.append(symbol)
+    if not requested:
+        return {"quotes": {}}
+    if len(requested) > 20:
+        raise HTTPException(status_code=422, detail="maximum 20 symbols per request")
+
+    quotes = {}
+    for symbol in requested:
+        try:
+            bars, meta = await fetch_ohlcv(symbol, interval="1d", range_="5d")
+            last = bars.iloc[-1]
+            prev = bars.iloc[-2] if len(bars) > 1 else last
+            price = safe_float(last["close"])
+            previous = safe_float(prev["close"])
+            change_pct = None
+            if price is not None and previous not in (None, 0):
+                change_pct = price / previous - 1
+            quotes[symbol] = {
+                "price": price,
+                "previous_close": previous,
+                "change_pct": change_pct,
+                "currency": meta.get("currency", "USD"),
+                "exchange": meta.get("exchangeName"),
+                "market_time": bars.index[-1].isoformat(),
+            }
+        except Exception as exc:
+            quotes[symbol] = {"error": str(exc)}
+    return {
+        "generated_at": pd.Timestamp.now(tz="UTC").isoformat(),
+        "quotes": quotes,
     }
 
 
@@ -538,6 +579,14 @@ setInterval(load,15000);setInterval(loadBacktest,5*60*1000);
 </html>"""
 
 
+CAPITAL_OS_HTML = (ROOT / "web" / "capital_os.html").read_text(encoding="utf-8")
+
+
 @app.get("/", response_class=HTMLResponse)
-async def dashboard():
+async def capital_os():
+    return HTMLResponse(CAPITAL_OS_HTML)
+
+
+@app.get("/gold", response_class=HTMLResponse)
+async def gold_dashboard():
     return HTMLResponse(DASHBOARD_HTML)
