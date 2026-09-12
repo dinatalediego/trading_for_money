@@ -1,75 +1,141 @@
 # trading_for_money
 
-Laboratorio de **trading cuantitativo y aprendizaje de ejecución** para convertir operaciones manuales en evidencia medible.
+Laboratorio de **market intelligence, trading cuantitativo y aprendizaje de ejecución**.
 
-> Objetivo: no buscar una “señal mágica”, sino responder con datos si una forma de operar tiene **ventaja estadística después de costos**, cuánto riesgo asume y bajo qué condiciones funciona o deja de funcionar.
+> Objetivo: construir un sistema que observe mercados, explique qué está siendo premiado o castigado, convierta hipótesis en experimentos reproducibles y aprenda con paper trading antes de cualquier uso real.
 
-## Punto de partida
+## Dos líneas del proyecto
 
-El repositorio nace a partir de operaciones manuales en **XAUUSD**. En la captura inicial se observan 11 operaciones cerradas completas con P&L visible:
+### 1. Trade Evidence Lab
 
-- 10 ganadoras y 1 perdedora.
-- P&L bruto visible: **+440.37**.
-- Deducciones PF visibles: **-127.87**.
-- Resultado neto visible de esa muestra: **+312.50**.
-- Win rate de la muestra: **90.9%**.
+La captura inicial corresponde a operaciones manuales de un tercero y se conserva únicamente como **dataset educativo de ejemplo** para practicar:
 
-Eso es prometedor como dato inicial, pero **no demuestra todavía un edge**: la muestra es pequeña, puede existir selección de periodo, dependencia entre operaciones, costos no visibles y concentración del resultado en pocas operaciones.
+- reconciliación de P&L;
+- win rate;
+- expectancy;
+- profit factor;
+- drawdown;
+- incertidumbre;
+- costos y deducciones.
 
-## La idea
+No representa el historial del propietario del repositorio ni constituye evidencia suficiente de una estrategia rentable.
 
-El proyecto sigue un ciclo:
-
-**Trade → Evidence → Edge → Risk → Experiment → Decision → Learning**
-
-1. **Journal**: normalizar cada operación y cada costo.
-2. **Diagnostics**: win rate, expectancy, profit factor, drawdown, distribución, sesgos por lado y hora.
-3. **Uncertainty**: bootstrap para estimar qué tan estable es la rentabilidad observada.
-4. **Risk Lab**: stress tests y simulaciones antes de arriesgar capital real.
-5. **Strategy Lab**: convertir intuiciones manuales en reglas falsables.
-6. **Paper Trading**: validar reglas fuera de muestra antes de automatizar.
-7. **Live Monitor**: comparar ejecución real vs. estrategia esperada.
-
-## Ejecutar el MVP
+Ejecutar:
 
 ```bash
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-
-pip install -r requirements.txt
 streamlit run app.py
 ```
 
-También puedes correr los tests:
+### 2. Agentic Market Lab
+
+El nuevo foco del repositorio es un agente de investigación semiautónomo que:
+
+- observa un universo cross-asset;
+- calcula tendencia, volatilidad y relative strength;
+- detecta liderazgo/rezago;
+- produce narrativas como "tecnología está liderando mientras small caps se rezagan";
+- genera propuestas **solo para paper trading**;
+- permite comparar posteriormente decisiones sistemáticas vs. decisiones humanas;
+- puede conectarse a MetaTrader 5 en modo **read-only**.
+
+Ejecutar:
 
 ```bash
-pytest
+pip install -r requirements.txt
+streamlit run agent_app.py
 ```
 
-## Datos
+Para habilitar únicamente la lectura local de MetaTrader 5 en Windows:
 
-El MVP incluye dos archivos de ejemplo:
+```bash
+pip install -r requirements-mt5.txt
+```
 
-- `data/sample_trades.csv`: operaciones completas visibles en la captura inicial.
-- `data/sample_account_events.csv`: deducciones/costos visibles.
+## Arquitectura
 
-Para tus datos reales, usa el esquema descrito en `data/README.md`.
+```text
+Market data
+   ↓
+Market snapshot
+   ↓
+Regime / Narrative Engine
+   ↓
+Research insights
+   ↓
+Rule engine
+   ↓
+Paper proposal
+   ↓
+Risk / approval gate
+   ↓
+Paper broker
+   ↓
+Outcomes + learning
+```
 
-## Principios del sistema
+La arquitectura detallada y la escalera de autonomía están en:
 
-- **Costs first**: una estrategia se evalúa neta de comisiones, swaps y deducciones.
-- **No leakage**: las reglas se validan fuera de muestra.
-- **No martingale por defecto**.
-- **No “doblar para recuperar”** como mecanismo de decisión.
-- **Paper before live**: una nueva regla pasa primero por backtest y paper trading.
-- **Execution ≠ prediction**: una señal buena puede perder dinero por tamaño, spread o disciplina.
-- **Uncertainty is a KPI**: no solo medimos retorno; medimos cuánto confiamos en él.
+`docs/AGENT_ARCHITECTURE.md`
 
-## Próximo nivel
+## Autonomy ladder
 
-La hoja de ruta está en `docs/ROADMAP.md`. El siguiente salto útil es importar automáticamente el historial completo de MetaTrader/MT5, enriquecerlo con velas de mercado alrededor de cada entrada y reconstruir qué patrón estabas operando realmente.
+- **L0 — Observer:** métricas y dashboards.
+- **L1 — Research Agent:** insights explicables.
+- **L2 — Supervised Paper Trader:** propuestas que un humano acepta/rechaza.
+- **L3 — Autonomous Paper Trader:** ejecución automática exclusivamente en simulación.
+- **L4 — Live Read-only Monitor:** observa MetaTrader/MT5, posiciones y mercado, sin órdenes.
+- **L5 — Human-executed Live Trading:** el sistema prepara evidencia/checklists y el humano ejecuta por separado.
+
+## Principios
+
+- **Evidence before autonomy.**
+- **Paper before live.**
+- **Deterministic execution, probabilistic interpretation.**
+- **Costs first.**
+- **No leakage / walk-forward validation.**
+- **No martingale.**
+- **No averaging down automático.**
+- **Every proposal is auditable.**
+- **Uncertainty is a KPI.**
+
+## Estructura
+
+```text
+app.py                         # Evidence Lab
+agent_app.py                   # Agentic Market Lab
+
+src/trading_for_money/
+├── market_data.py             # descarga datos de mercado
+├── market_insights.py         # regime / relative-strength engine
+├── agent_models.py            # contratos de insights/propuestas
+├── paper_agent.py             # estrategia auditable de ejemplo
+├── paper_broker.py            # broker simulado
+├── mt5_readonly.py            # MetaTrader 5 sin order_send
+├── metrics.py
+├── diagnostics.py
+└── io.py
+
+docs/
+├── ROADMAP.md
+└── AGENT_ARCHITECTURE.md
+```
+
+## Próximo salto
+
+El siguiente nivel útil no es agregar un LLM que "adivine" precios. Es construir un **Market Memory**:
+
+1. snapshot diario de precios/factores;
+2. insights producidos;
+3. hipótesis;
+4. propuesta de paper trade;
+5. aprobación/rechazo humano;
+6. retorno futuro 1d/5d/20d;
+7. MFE/MAE;
+8. régimen posterior;
+9. evaluación de qué insights realmente agregaron valor.
+
+Así el agente puede aprender qué observaciones funcionan, en qué régimen y con qué grado de confianza.
 
 ## Nota
 
-Este repositorio es una herramienta educativa y de investigación. No garantiza rentabilidad ni sustituye asesoría financiera profesional.
+Este repositorio es educativo y de investigación. No garantiza rentabilidad. El código actual no enruta órdenes reales ni expone una función de ejecución live.
