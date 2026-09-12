@@ -253,8 +253,8 @@ class AllocationRequest(BaseModel):
     contribution_amount: float = Field(ge=0)
     bucket_values: dict[str, float]
     target_weights: dict[str, float]
-    goals: list[AllocationGoalRequest] = []
-    gold: AllocationGoldRequest = AllocationGoldRequest()
+    goals: list[AllocationGoalRequest] = Field(default_factory=list)
+    gold: AllocationGoldRequest = Field(default_factory=AllocationGoldRequest)
     opportunity_thesis_coverage: float = Field(default=0, ge=0, le=1)
     base_currency: str = Field(default="USD", min_length=3, max_length=3)
 
