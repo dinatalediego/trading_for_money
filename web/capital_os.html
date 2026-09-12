@@ -295,6 +295,9 @@ function renderInvestment(){
   renderBrief(total,by);renderGoals(total);renderCapitalCouncil(total);
 }
 function renderCapitalCouncil(total=null){
+  if(total==null && positions.length){
+    total=positions.reduce((s,p)=>s+Number(p.quantity||0)*positionPrice(p),0);
+  }
   const closed=goldState?.trades?.filter(t=>t.status==='CLOSED')||[];
   const wins=closed.filter(t=>Number(t.pnl_r)>0).length;
   const exp=closed.length?closed.reduce((a,t)=>a+Number(t.pnl_r||0),0)/closed.length:null;
