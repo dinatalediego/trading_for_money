@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "trading-for-money"
-version = "0.5.0"
-description = "Gold-only trading intelligence and paper automation lab"
+version = "0.7.0"
+description = "Capital OS: investment allocation and gold alpha research lab"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.116,<1",
