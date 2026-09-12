@@ -292,12 +292,14 @@ def build_allocation_plan(inp: AllocationInput) -> AllocationPlan:
     for b in BUCKETS:
         allocations[b] += gap_allocations[b]
 
-    # Round while preserving the exact contribution total.
-    rounded = {b: _money(allocations[b]) for b in BUCKETS}
-    delta = _money(contribution) - sum(rounded.values())
-    if abs(delta) >= 0.01:
+    # Round in integer cents so the proposal always reconciles exactly.
+    contribution_cents = round(contribution * 100)
+    rounded_cents = {b: round(allocations[b] * 100) for b in BUCKETS}
+    delta_cents = contribution_cents - sum(rounded_cents.values())
+    if delta_cents:
         priority_bucket = max(BUCKETS, key=lambda b: allocations[b])
-        rounded[priority_bucket] = _money(rounded[priority_bucket] + delta)
+        rounded_cents[priority_bucket] += delta_cents
+    rounded = {b: rounded_cents[b] / 100 for b in BUCKETS}
 
     target_post = {b: effective_targets[b] * post_total for b in BUCKETS}
     actual_post = {b: values[b] + rounded[b] for b in BUCKETS}
