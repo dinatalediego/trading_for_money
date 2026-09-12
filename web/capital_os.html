@@ -243,7 +243,7 @@ async function ensureDefaults(){
 async function boot(){
   el('authPanel').classList.add('hidden');el('appPanel').classList.remove('hidden');el('userbox').classList.remove('hidden');
   el('userEmail').textContent=session.user.email||'';
-  try{await ensureDefaults();await refreshAll();}catch(e){el('appError').textContent=e.message}
+  try{await ensureDefaults();await refreshAll();await loadGold();renderInvestment();}catch(e){el('appError').textContent=e.message}
 }
 async function refreshAll(){
   el('appError').textContent='';
@@ -296,9 +296,14 @@ function renderBrief(total,by){
   const g=gaps[0];
   const direction=g.g>0?'por encima':'por debajo';
   const contribution=Number(settings.monthly_contribution||0);
+  const goldClosed=goldState?.trades?.filter(t=>t.status==='CLOSED').length||0;
+  const alphaNote=goldClosed<100
+    ? `Gold Alpha sigue en <strong>fase de evidencia</strong> (${goldClosed}/100 trades mínimos del primer gate). El bucket GOLD_LAB debe tratarse como capital experimental, no como Core.`
+    : `Gold Alpha ya superó el primer gate de muestra con <strong>${goldClosed} trades</strong>; el siguiente criterio es expectancy neta y estabilidad por régimen.`;
   el('portfolioBrief').innerHTML=
     `<div class="narrative"><strong>Capital actual:</strong> ${fmtMoney(total)}. El motor dominante es <strong>${largest[0]}</strong> con ${pct(largest[1]/total)} del portfolio.</div>`+
     `<div class="narrative"><strong>Mayor desviación:</strong> ${g.k} está ${direction} de su política objetivo por <span class="${Math.abs(g.g)>0.08?'warn':'good'}">${Math.abs(g.g*100).toFixed(1)} pp</span>.</div>`+
+    `<div class="narrative"><strong>Conexión Investment ↔ Alpha:</strong> ${alphaNote}</div>`+
     `<div class="narrative"><strong>Próximo aporte:</strong> con ${fmtMoney(contribution)} mensuales, el sistema debe priorizar primero los buckets infraponderados antes de aumentar riesgo táctico.</div>`;
 }
 function renderGoals(total){
