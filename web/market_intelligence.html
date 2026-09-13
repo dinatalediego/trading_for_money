@@ -23,7 +23,7 @@ h1{font-size:18px;margin:0;letter-spacing:.07em}.sub,.muted{color:var(--muted)}.
 <div class="top"><div class="brand"><div class="mark">MI</div><div><h1>MARKET INTELLIGENCE</h1><div class="sub">Capital OS · Daily Brief · Source Finder · provenance-first research</div></div></div>
 <div class="nav"><a class="btn" href="/">Investment</a><a class="btn" href="/gold">Gold Alpha</a><a class="btn gold" href="/learning">Learning Mode</a></div></div>
 <div id="authWarn" class="panel pad" style="display:none">Inicia sesión primero en <a href="/" style="color:var(--blue)">Capital OS</a>.</div>
-<main id="main" style="display:none">
+<main id="main">
 <section class="hero"><div class="stage">DAILY INVESTOR BRIEF</div><h2 id="headline">Construyendo tu panorama…</h2><p id="subtitle">Mercado, tu cartera y una lección concreta en un mismo flujo.</p></section>
 <div class="grid" style="margin-top:14px"><section class="panel pad"><h3 class="section-title">WHAT MATTERS TODAY</h3><div id="observations" class="brief"></div><div class="actions"><button class="btn green" onclick="markRead()">Marcar brief como leído</button><button class="btn" onclick="loadAll()">Actualizar</button></div><div id="readState" class="muted" style="margin-top:7px"></div></section>
 <aside class="panel pad"><h3 class="section-title">TU PRÓXIMA ACCIÓN</h3><div id="portfolioAction" class="narrative"></div><div id="lessonAction" class="narrative"></div></aside></div>
@@ -35,28 +35,130 @@ h1{font-size:18px;margin:0;letter-spacing:.07em}.sub,.muted{color:var(--muted)}.
 </main></div>
 <script>
 const URL="https://tlyczyfsboqrtrdpwizp.supabase.co", KEY="sb_publishable_gMTGwNPjdwgNuzzRPpUPyA_ezrPfCrT";
-const sb=window.supabase.createClient(URL,KEY);let session=null,positions=[],settings=null,goals=[],watch=[],brief=null,intel=null,lessons=[],progress=[];
-const E=id=>document.getElementById(id), esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-const pct=v=>v==null?"—":((v>=0?"+":"")+(Number(v)*100).toFixed(1)+"%");
-async function boot(){const g=await sb.auth.getSession();session=g.data.session;if(!session){E("authWarn").style.display="block";return}E("main").style.display="block";await loadAll()}
-async function loadAll(){try{
-const q=await Promise.all([sb.from("tfm_investment_positions").select("*").eq("is_active",true),sb.from("tfm_investment_settings").select("*").maybeSingle(),sb.from("tfm_investment_goals").select("*").eq("is_active",true),sb.from("tfm_market_watchlist").select("*").eq("is_active",true),fetch("/api/learning-path").then(r=>r.json()),sb.from("tfm_learning_progress").select("*")]);
-positions=q[0].data||[];settings=q[1].data;goals=q[2].data||[];watch=q[3].data||[];lessons=q[4].lessons||[];progress=q[5].data||[];
-const syms=[...new Set(positions.filter(p=>p.asset_class!=="cash").map(p=>String(p.symbol||"").toUpperCase()).concat(watch.map(w=>w.symbol)))].filter(Boolean).slice(0,10);
-const suf=syms.length?"?symbols="+encodeURIComponent(syms.join(",")):"";const d=await Promise.all([fetch("/api/daily-brief"+suf,{cache:"no-store"}).then(r=>r.json()),fetch("/api/market-intelligence"+suf,{cache:"no-store"}).then(r=>r.json())]);brief=d[0];intel=d[1];render()
-}catch(e){E("subtitle").textContent="Error: "+e.message}}
+let sb=null,session=null,positions=[],settings=null,goals=[],watch=[],brief=null,intel=null,lessons=[],progress=[];
+const E=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const pct=v=>v==null?"—":((Number(v)>=0?"+":"")+(Number(v)*100).toFixed(1)+"%");
+const personalized=()=>!!(sb&&session);
+
+async function boot(){
+  E("main").style.display="block";
+  if(window.supabase){
+    try{
+      sb=window.supabase.createClient(URL,KEY);
+      const g=await sb.auth.getSession();
+      session=g.data.session;
+    }catch(e){console.warn("Supabase session unavailable",e)}
+  }
+  if(!session){
+    E("authWarn").style.display="block";
+    E("authWarn").innerHTML='Market Intelligence funciona en modo público. <a href="/" style="color:var(--blue)">Inicia sesión en Capital OS</a> para portfolio, watchlist y memoria.';
+  }
+  await loadAll();
+}
+
+async function loadAll(){
+  try{
+    const learningReq=fetch("/api/learning-path",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error(await r.text());return r.json()});
+    let portfolioData={positions:[],settings:null,goals:[],watch:[],progress:[]};
+
+    if(personalized()){
+      const q=await Promise.all([
+        sb.from("tfm_investment_positions").select("*").eq("is_active",true),
+        sb.from("tfm_investment_settings").select("*").maybeSingle(),
+        sb.from("tfm_investment_goals").select("*").eq("is_active",true),
+        sb.from("tfm_market_watchlist").select("*").eq("is_active",true),
+        sb.from("tfm_learning_progress").select("*")
+      ]);
+      portfolioData={
+        positions:q[0].data||[], settings:q[1].data||null, goals:q[2].data||[],
+        watch:q[3].data||[], progress:q[4].data||[]
+      };
+    }
+
+    const lp=await learningReq;
+    positions=portfolioData.positions;settings=portfolioData.settings;goals=portfolioData.goals;
+    watch=portfolioData.watch;progress=portfolioData.progress;lessons=lp.lessons||[];
+
+    const syms=[...new Set(
+      positions.filter(p=>p.asset_class!=="cash").map(p=>String(p.symbol||"").toUpperCase())
+        .concat(watch.map(w=>String(w.symbol||"").toUpperCase()))
+    )].filter(Boolean).slice(0,10);
+    const suf=syms.length?"?symbols="+encodeURIComponent(syms.join(",")):"";
+
+    const responses=await Promise.all([
+      fetch("/api/daily-brief"+suf,{cache:"no-store"}),
+      fetch("/api/market-intelligence"+suf,{cache:"no-store"})
+    ]);
+    if(!responses[0].ok) throw new Error("Daily Brief: "+await responses[0].text());
+    if(!responses[1].ok) throw new Error("Market Intelligence: "+await responses[1].text());
+    brief=await responses[0].json();
+    intel=await responses[1].json();
+    render();
+  }catch(e){
+    E("headline").textContent="Market Intelligence no pudo completar la carga";
+    E("subtitle").textContent=String(e&&e.message||e);
+    E("observations").innerHTML='<div class="item">Los datos públicos no se ocultarán: usa Actualizar o vuelve a intentar en unos segundos.</div>';
+    console.error(e);
+  }
+}
+
 function nextLesson(){return lessons.find(l=>{const p=progress.find(x=>x.lesson_id===l.lesson_id);return !p||p.status!=="COMPLETED"})}
-function portfolioNote(){if(!settings)return "Define tu política de capital.";if(!positions.length)return "Tu cartera aún está vacía. Prioriza un Core diversificado y usa Opportunity para aprender, no para perseguir titulares.";return "Antes de una compra, abre Investment Engine y usa Capital Allocation. El brief de hoy es contexto, no una orden."}
-function render(){const r=intel.regime||{},lead=(r.leaders||[])[0];E("headline").textContent=brief.headline||"Daily Investor Brief";E("subtitle").textContent="Actualizado "+new Date(brief.generated_at).toLocaleString()+" · "+brief.discipline_note;E("observations").innerHTML=(brief.observations||[]).map(x=>'<div class="item">'+esc(x)+'</div>').join("");E("portfolioAction").innerHTML="<strong>Portfolio:</strong> "+portfolioNote();const n=nextLesson();E("lessonAction").innerHTML=n?("<strong>Aprende hoy:</strong> "+esc(n.title)+" · "+n.duration_minutes+" min.<br><span class=muted>"+esc(n.objective)+'</span><div class=actions><a class="btn" href="/learning">Learning Mode</a></div>'):"Track inicial completado.";
-E("regime").textContent=r.regime||"—";E("riskScore").textContent="score "+(r.risk_score==null?"—":r.risk_score);E("leader").textContent=lead?lead.symbol:"—";E("gold20").textContent=pct(r.gold_20d);E("dollar20").textContent=pct(r.dollar_20d);E("updated").textContent=new Date(intel.generated_at).toLocaleTimeString();
-E("macro").innerHTML=(brief.macro||[]).map(m=>m.error?'<div class=mini><div class=k>'+esc(m.label)+'</div><div class=v>n/d</div></div>':'<div class=mini><div class=k>'+esc(m.label)+'</div><div class=v>'+Number(m.value).toFixed(2)+esc(m.unit||"")+'</div><div class=delta>'+esc(m.observation_date)+'</div><a href="'+esc(m.source_url)+'" target=_blank style="color:var(--blue)">FRED ↗</a></div>').join("");
-E("news").innerHTML=(brief.headlines||[]).slice(0,6).map(n=>'<div class=news><a href="'+esc(n.url||"#")+'" target=_blank rel=noopener><strong>'+esc(n.title||"Headline")+'</strong></a><div class=muted>'+esc(n.publisher||n.source||"")+' · discovery</div></div>').join("")||'<div class=muted>Sin titulares. Usa Source Finder.</div>';
-E("marketBody").innerHTML=(intel.assets||[]).map(a=>'<tr><td><b>'+esc(a.symbol)+'</b><div class=muted>'+esc(a.label)+'</div></td><td>'+pct(a.return_1d)+'</td><td>'+pct(a.return_5d)+'</td><td>'+pct(a.return_20d)+'</td><td>'+pct(a.return_60d)+'</td><td>'+esc(a.trend)+'</td><td>'+(a.vol_20d_annualized==null?"—":(a.vol_20d_annualized*100).toFixed(1)+"%")+'</td><td><a href="'+esc(a.source_url)+'" target=_blank style="color:var(--blue)">↗</a></td></tr>').join("");renderWatch()}
-async function markRead(){const day=new Date().toISOString().slice(0,10);const x=await sb.from("tfm_daily_brief_reads").upsert({brief_date:day,read_at:new Date().toISOString(),brief_snapshot:brief},{onConflict:"owner_id,brief_date"});E("readState").textContent=x.error?x.error.message:"Guardado en tu Learning Memory."}
-async function findSources(){const q=E("sourceQuery").value.trim(),r=await fetch("/api/source-finder?q="+encodeURIComponent(q)),d=await r.json();E("sources").innerHTML=(d.sources||[]).map(s=>'<div class=source><span class=tag>'+esc(s.authority)+'</span><h4>'+esc(s.name)+'</h4><div class=muted>'+esc(s.description)+'</div><div class=actions><a class=btn href="'+esc(s.search_url)+'" target=_blank>Buscar ↗</a><button class=btn data-v="'+encodeURIComponent(JSON.stringify(s))+'" onclick="saveSource(this.dataset.v)">Guardar</button></div></div>').join("")}
-async function saveSource(v){const s=JSON.parse(decodeURIComponent(v));const x=await sb.from("tfm_source_bookmarks").insert({source_key:s.key,title:s.name,url:s.search_url||s.base_url,source_type:s.kind,authority:s.authority,query_context:E("sourceQuery").value.trim()});if(x.error)alert(x.error.message);else alert("Fuente guardada en Learning Mode.")}
-async function addWatch(){const symbol=E("watchSymbol").value.trim().toUpperCase();if(!symbol)return;const x=await sb.from("tfm_market_watchlist").upsert({symbol,label:symbol,category:"WATCH",reason:E("watchReason").value.trim(),is_active:true},{onConflict:"owner_id,symbol"});if(x.error)return alert(x.error.message);await loadAll()}
-async function removeWatch(id){await sb.from("tfm_market_watchlist").update({is_active:false,updated_at:new Date().toISOString()}).eq("id",id);await loadAll()}
-function renderWatch(){E("watchlist").innerHTML=watch.length?watch.map(w=>'<div class=narrative><strong>'+esc(w.symbol)+'</strong><div class=muted>'+esc(w.reason||"Sin tesis")+'</div><button class="btn" onclick="removeWatch(\''+w.id+'\')">Quitar</button></div>').join(""):'<div class=muted>Vacía. Añade un ticker solo si puedes escribir por qué merece tu atención.</div>'}
+function portfolioNote(){
+  if(!session)return "Modo público: inicia sesión para conectar este panorama con tu cartera y Allocation Engine.";
+  if(!settings)return "Define tu política de capital.";
+  if(!positions.length)return "Tu cartera aún está vacía. Prioriza un Core diversificado y usa Opportunity para aprender, no para perseguir titulares.";
+  return "Antes de una compra, abre Investment Engine y usa Capital Allocation. El brief de hoy es contexto, no una orden.";
+}
+function render(){
+  const r=intel.regime||{},lead=(r.leaders||[])[0];
+  E("headline").textContent=brief.headline||"Daily Investor Brief";
+  E("subtitle").textContent="Actualizado "+new Date(brief.generated_at).toLocaleString()+" · "+brief.discipline_note;
+  E("observations").innerHTML=(brief.observations||[]).map(x=>'<div class="item">'+esc(x)+'</div>').join("");
+  E("portfolioAction").innerHTML="<strong>Portfolio:</strong> "+portfolioNote();
+  const n=nextLesson();
+  E("lessonAction").innerHTML=n?("<strong>Aprende hoy:</strong> "+esc(n.title)+" · "+n.duration_minutes+" min.<br><span class=muted>"+esc(n.objective)+'</span><div class=actions><a class="btn" href="/learning">Learning Mode</a></div>'):"Track inicial completado.";
+  E("regime").textContent=r.regime||"—";
+  E("riskScore").textContent="score "+(r.risk_score==null?"—":r.risk_score);
+  E("leader").textContent=lead?lead.symbol:"—";
+  E("gold20").textContent=pct(r.gold_20d);E("dollar20").textContent=pct(r.dollar_20d);
+  E("updated").textContent=new Date(intel.generated_at).toLocaleTimeString();
+  E("macro").innerHTML=(brief.macro||[]).map(m=>m.error
+    ?'<div class=mini><div class=k>'+esc(m.label)+'</div><div class=v>n/d</div><div class=delta>'+esc(m.error)+'</div><a href="'+esc(m.source_url)+'" target=_blank style="color:var(--blue)">fuente oficial ↗</a></div>'
+    :'<div class=mini><div class=k>'+esc(m.label)+'</div><div class=v>'+Number(m.value).toFixed(2)+esc(m.unit||"")+'</div><div class=delta>'+esc(m.observation_date)+'</div><a href="'+esc(m.source_url)+'" target=_blank style="color:var(--blue)">FRED ↗</a></div>'
+  ).join("");
+  E("news").innerHTML=(brief.headlines||[]).slice(0,6).map(n=>'<div class=news><a href="'+esc(n.url||"#")+'" target=_blank rel=noopener><strong>'+esc(n.title||"Headline")+'</strong></a><div class=muted>'+esc(n.publisher||n.source||"")+' · discovery</div></div>').join("")||'<div class=muted>Sin titulares relevantes. Usa Source Finder.</div>';
+  E("marketBody").innerHTML=(intel.assets||[]).map(a=>'<tr><td><b>'+esc(a.symbol)+'</b><div class=muted>'+esc(a.label)+'</div></td><td>'+pct(a.return_1d)+'</td><td>'+pct(a.return_5d)+'</td><td>'+pct(a.return_20d)+'</td><td>'+pct(a.return_60d)+'</td><td>'+esc(a.trend)+'</td><td>'+(a.vol_20d_annualized==null?"—":(a.vol_20d_annualized*100).toFixed(1)+"%")+'</td><td><a href="'+esc(a.source_url)+'" target=_blank style="color:var(--blue)">↗</a></td></tr>').join("");
+  renderWatch();
+}
+async function markRead(){
+  if(!personalized()){E("readState").textContent="Inicia sesión para guardar este brief.";return}
+  const day=new Date().toISOString().slice(0,10);
+  const x=await sb.from("tfm_daily_brief_reads").upsert({brief_date:day,read_at:new Date().toISOString(),brief_snapshot:brief},{onConflict:"owner_id,brief_date"});
+  E("readState").textContent=x.error?x.error.message:"Guardado en tu Learning Memory.";
+}
+async function findSources(){
+  const q=E("sourceQuery").value.trim(),r=await fetch("/api/source-finder?q="+encodeURIComponent(q),{cache:"no-store"});
+  if(!r.ok)return E("sources").innerHTML='<div class=error>No se pudo buscar fuentes.</div>';
+  const d=await r.json();
+  E("sources").innerHTML=(d.sources||[]).map(s=>'<div class=source><span class=tag>'+esc(s.authority)+'</span><h4>'+esc(s.name)+'</h4><div class=muted>'+esc(s.description)+'</div><div class=actions><a class=btn href="'+esc(s.search_url)+'" target=_blank>Buscar ↗</a><button class=btn data-v="'+encodeURIComponent(JSON.stringify(s))+'" onclick="saveSource(this.dataset.v)">Guardar</button></div></div>').join("");
+}
+async function saveSource(v){
+  if(!personalized())return alert("Inicia sesión en Capital OS para guardar fuentes.");
+  const s=JSON.parse(decodeURIComponent(v));
+  const x=await sb.from("tfm_source_bookmarks").insert({source_key:s.key,title:s.name,url:s.search_url||s.base_url,source_type:s.kind,authority:s.authority,query_context:E("sourceQuery").value.trim()});
+  if(x.error)alert(x.error.message);else alert("Fuente guardada en Learning Mode.");
+}
+async function addWatch(){
+  if(!personalized())return alert("Inicia sesión en Capital OS para usar una watchlist privada.");
+  const symbol=E("watchSymbol").value.trim().toUpperCase();if(!symbol)return;
+  const x=await sb.from("tfm_market_watchlist").upsert({symbol,label:symbol,category:"WATCH",reason:E("watchReason").value.trim(),is_active:true},{onConflict:"owner_id,symbol"});
+  if(x.error)return alert(x.error.message);await loadAll();
+}
+async function removeWatch(id){if(!personalized())return;await sb.from("tfm_market_watchlist").update({is_active:false,updated_at:new Date().toISOString()}).eq("id",id);await loadAll()}
+function renderWatch(){
+  if(!personalized()){E("watchlist").innerHTML='<div class=muted>Inicia sesión para conectar una watchlist privada con tus métricas.</div>';return}
+  E("watchlist").innerHTML=watch.length?watch.map(w=>'<div class=narrative><strong>'+esc(w.symbol)+'</strong><div class=muted>'+esc(w.reason||"Sin tesis")+'</div><button class="btn" onclick="removeWatch(\''+w.id+'\')">Quitar</button></div>').join(""):'<div class=muted>Vacía. Añade un ticker solo si puedes escribir por qué merece tu atención.</div>';
+}
 boot();
 </script></body></html>
