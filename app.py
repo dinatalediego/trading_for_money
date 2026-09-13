@@ -36,12 +36,18 @@ from trading_for_money.intelligence import (
     compute_asset_metrics,
     find_sources,
 )
+from trading_for_money.portfolio import (
+    ConstitutionInput,
+    PortfolioHealthInput,
+    PositionInput,
+    build_portfolio_health,
+)
 
 
 app = FastAPI(
-    title="Gold Scalping Intelligence",
-    version="0.4.0",
-    description="Gold-only research and paper-trading terminal.",
+    title="Capital OS",
+    version="0.9.0",
+    description="Personal investment operating system with portfolio health, market intelligence and gold research.",
 )
 
 YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
@@ -510,6 +516,130 @@ async def learning_path():
     }
 
 
+class PortfolioPositionRequest(BaseModel):
+    symbol: str
+    bucket: str
+    quantity: float = Field(ge=0)
+    market_price: float = Field(ge=0)
+    avg_cost: float | None = Field(default=None, ge=0)
+    asset_class: str = "other"
+
+
+class ConstitutionRequest(BaseModel):
+    horizon_years: int = Field(default=10, ge=1, le=60)
+    emergency_fund_months: int = Field(default=6, ge=0, le=36)
+    emergency_fund_ready: bool = False
+    max_single_position_pct: float = Field(default=0.15, gt=0, le=1)
+    max_sector_pct: float = Field(default=0.30, gt=0, le=1)
+    max_opportunity_pct: float = Field(default=0.20, ge=0, le=1)
+    max_gold_lab_pct: float = Field(default=0.05, ge=0, le=1)
+    max_drawdown_tolerance_pct: float = Field(default=0.25, gt=0, le=1)
+    leverage_policy: str = "NONE"
+    rebalance_method: str = "CONTRIBUTIONS_FIRST"
+    core_band_pp: float = Field(default=0.05, ge=0, le=0.50)
+    opportunity_band_pp: float = Field(default=0.03, ge=0, le=0.50)
+    cash_band_pp: float = Field(default=0.03, ge=0, le=0.50)
+    gold_lab_band_pp: float = Field(default=0.02, ge=0, le=0.50)
+    benchmark_symbol: str = Field(default="SPY", min_length=1, max_length=20)
+    benchmark_window_days: int = Field(default=60, ge=20, le=2520)
+    decision_cooldown_hours: int = Field(default=24, ge=0, le=720)
+    opportunity_requires_thesis: bool = True
+    gold_live_allowed: bool = False
+
+
+class PortfolioHealthRequest(BaseModel):
+    positions: list[PortfolioPositionRequest] = Field(default_factory=list)
+    target_weights: dict[str, float]
+    constitution: ConstitutionRequest = Field(default_factory=ConstitutionRequest)
+    monthly_contribution: float = Field(default=0, ge=0)
+    base_currency: str = Field(default="USD", min_length=3, max_length=3)
+
+
+async def benchmark_context(symbol: str, window_days: int) -> tuple[float | None, float | None, str | None]:
+    symbol = symbol.strip().upper()
+    if not symbol:
+        return None, None, "benchmark symbol is empty"
+
+    if window_days <= 252:
+        range_ = "1y"
+    elif window_days <= 1260:
+        range_ = "5y"
+    else:
+        range_ = "10y"
+
+    try:
+        bars, _ = await fetch_ohlcv(symbol, interval="1d", range_=range_)
+        close = pd.to_numeric(bars["close"], errors="coerce").dropna()
+        if len(close) < 2:
+            return None, None, "not enough benchmark observations"
+        periods = min(int(window_days), len(close) - 1)
+        base = float(close.iloc[-periods - 1])
+        latest = float(close.iloc[-1])
+        if base <= 0:
+            return None, latest, "invalid benchmark base price"
+        return latest / base - 1.0, latest, None
+    except Exception as exc:
+        return None, None, str(exc)
+
+
+@app.post("/api/portfolio-health")
+async def portfolio_health(request: PortfolioHealthRequest):
+    try:
+        benchmark_return, benchmark_price, benchmark_error = await benchmark_context(
+            request.constitution.benchmark_symbol,
+            request.constitution.benchmark_window_days,
+        )
+
+        constitution = ConstitutionInput(
+            horizon_years=request.constitution.horizon_years,
+            emergency_fund_months=request.constitution.emergency_fund_months,
+            emergency_fund_ready=request.constitution.emergency_fund_ready,
+            max_single_position_pct=request.constitution.max_single_position_pct,
+            max_sector_pct=request.constitution.max_sector_pct,
+            max_opportunity_pct=request.constitution.max_opportunity_pct,
+            max_gold_lab_pct=request.constitution.max_gold_lab_pct,
+            max_drawdown_tolerance_pct=request.constitution.max_drawdown_tolerance_pct,
+            leverage_policy=request.constitution.leverage_policy,
+            rebalance_method=request.constitution.rebalance_method,
+            core_band_pp=request.constitution.core_band_pp,
+            opportunity_band_pp=request.constitution.opportunity_band_pp,
+            cash_band_pp=request.constitution.cash_band_pp,
+            gold_lab_band_pp=request.constitution.gold_lab_band_pp,
+            benchmark_symbol=request.constitution.benchmark_symbol.upper(),
+            benchmark_window_days=request.constitution.benchmark_window_days,
+            decision_cooldown_hours=request.constitution.decision_cooldown_hours,
+            opportunity_requires_thesis=request.constitution.opportunity_requires_thesis,
+            gold_live_allowed=request.constitution.gold_live_allowed,
+        )
+        positions = tuple(
+            PositionInput(
+                symbol=p.symbol.upper(),
+                bucket=p.bucket,
+                quantity=p.quantity,
+                market_price=p.market_price,
+                avg_cost=p.avg_cost,
+                asset_class=p.asset_class,
+            )
+            for p in request.positions
+        )
+        result = build_portfolio_health(
+            PortfolioHealthInput(
+                positions=positions,
+                target_weights=request.target_weights,
+                constitution=constitution,
+                monthly_contribution=request.monthly_contribution,
+                benchmark_return=benchmark_return,
+                benchmark_price=benchmark_price,
+                base_currency=request.base_currency.upper(),
+            )
+        ).to_dict()
+        result["benchmark_error"] = benchmark_error
+        result["generated_at"] = pd.Timestamp.now(tz="UTC").isoformat()
+        return result
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 class AllocationGoalRequest(BaseModel):
     name: str
     target_amount: float = Field(gt=0)
@@ -933,6 +1063,7 @@ setInterval(load,15000);setInterval(loadBacktest,5*60*1000);
 CAPITAL_OS_HTML = (ROOT / "web" / "capital_os.html").read_text(encoding="utf-8")
 MARKET_INTELLIGENCE_HTML = (ROOT / "web" / "market_intelligence.html").read_text(encoding="utf-8")
 LEARNING_HTML = (ROOT / "web" / "learning.html").read_text(encoding="utf-8")
+PORTFOLIO_HEALTH_HTML = (ROOT / "web" / "portfolio_health.html").read_text(encoding="utf-8")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -948,6 +1079,11 @@ async def intelligence_dashboard():
 @app.get("/learning", response_class=HTMLResponse)
 async def learning_dashboard():
     return HTMLResponse(LEARNING_HTML)
+
+
+@app.get("/health", response_class=HTMLResponse)
+async def portfolio_health_dashboard():
+    return HTMLResponse(PORTFOLIO_HEALTH_HTML)
 
 
 @app.get("/gold", response_class=HTMLResponse)

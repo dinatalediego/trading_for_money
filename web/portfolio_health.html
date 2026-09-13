@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Capital OS · Portfolio Health</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#080b10;--panel:#0f141d;--line:#223043;--text:#f0f4f8;--muted:#8290a3;--gold:#e5b64c;--green:#43d3a0;--red:#ff6678;--blue:#6aa7ff;--orange:#ffb35c;--violet:#a98bff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 75% -20%,#1a263c 0,#080b10 38%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+.shell{max-width:1500px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:16px}.brand{display:flex;gap:12px;align-items:center}.mark{width:44px;height:44px;border:1px solid #705b2a;border-radius:12px;background:#18140c;color:var(--gold);display:grid;place-items:center;font-weight:900}
+h1{font-size:18px;margin:0;letter-spacing:.06em}.sub,.muted{color:var(--muted)}.sub{font-size:12px;margin-top:4px}.nav{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#111824;color:#fff;padding:9px 12px;border-radius:10px;text-decoration:none;cursor:pointer;font-weight:750}.btn.green{background:#0c251d;border-color:#24604d;color:var(--green)}.btn.gold{background:#261f0f;border-color:#80682d;color:var(--gold)}.btn.red{background:#291117;border-color:#71303b;color:var(--red)}
+.panel{background:linear-gradient(180deg,rgba(18,25,36,.96),rgba(10,14,21,.97));border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 44px rgba(0,0,0,.22)}.pad{padding:18px}.hero{padding:22px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,#111a29,#0a0f16)}.hero h2{font-size:30px;margin:5px 0 8px;letter-spacing:-.04em}.hero p{margin:0;color:var(--muted);line-height:1.55}
+.stage,.k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:850}.stage{color:var(--gold)}.k{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.mini{padding:13px;border:1px solid var(--line);border-radius:13px;background:#0a0f16}.v{font-size:22px;font-weight:800;margin-top:5px}.delta{font-size:11px;color:var(--muted);margin-top:4px}
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}.section-title{font-size:13px;font-weight:850;letter-spacing:.05em;margin:0 0 12px}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px;border-bottom:1px solid #1d2735;text-align:left;font-size:12px}.table th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em}.scroll{overflow:auto}
+.narrative{padding:13px;border:1px solid var(--line);border-radius:13px;background:#0a0f16;margin-bottom:9px;line-height:1.5;font-size:13px}.good{color:var(--green)}.warn{color:var(--orange)}.bad{color:var(--red)}.blue{color:var(--blue)}
+.formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.field{display:flex;flex-direction:column;gap:5px}label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:#0a0f16;color:#fff}textarea{min-height:74px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.error{color:var(--red);font-size:12px;margin-top:8px;white-space:pre-wrap}
+.score{font-size:44px;font-weight:900;letter-spacing:-.05em}.progress{height:10px;border-radius:999px;background:#151e2b;overflow:hidden}.progress>div{height:100%;background:linear-gradient(90deg,#6aa7ff,#e5b64c)}.component{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid #1d2735}.component:last-child{border-bottom:0}
+.pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:850;border:1px solid var(--line)}.inband{color:var(--green);border-color:#225845}.under{color:var(--blue);border-color:#2c4f7a}.over{color:var(--orange);border-color:#7a542c}
+.callout{padding:14px;border-left:3px solid var(--gold);background:#0a0f16;border-radius:0 12px 12px 0;line-height:1.55}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){.cards,.formgrid{grid-template-columns:1fr}.shell{padding:12px}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body><div class="shell">
+<div class="top">
+  <div class="brand"><div class="mark">PH</div><div><h1>PORTFOLIO OPERATING SYSTEM</h1><div class="sub">Investment Constitution · Portfolio Health · Benchmark & Attribution · Rebalancing Bands</div></div></div>
+  <div class="nav"><a class="btn" href="/">Investment</a><a class="btn" href="/intelligence">Market Intelligence</a><a class="btn" href="/learning">Learning</a><a class="btn gold" href="/gold">Gold Alpha</a></div>
+</div>
+
+<div id="authWarn" class="panel pad" style="display:none">Inicia sesión primero en <a href="/" style="color:var(--blue)">Capital OS</a>. Portfolio Health usa datos privados de tu cartera.</div>
+
+<main id="main" style="display:none">
+<section class="hero">
+  <div class="stage">WEALTH PROTECTION FIRST</div>
+  <h2 id="heroTitle">Tu cartera debe sobrevivir para poder componer.</h2>
+  <p>Este módulo evalúa estructura, concentración, disciplina y rebalanceo. No intenta predecir qué activo subirá mañana y no crea órdenes.</p>
+</section>
+
+<div class="cards" style="margin-top:14px">
+  <div class="mini"><div class="k">Portfolio Health</div><div class="v" id="healthScore">—</div><div class="delta" id="healthStatus">—</div></div>
+  <div class="mini"><div class="k">Market Value</div><div class="v" id="portfolioValue">$0</div><div class="delta">portfolio actual</div></div>
+  <div class="mini"><div class="k">Cost-basis return</div><div class="v" id="portfolioReturn">—</div><div class="delta">current holdings</div></div>
+  <div class="mini"><div class="k">Benchmark context</div><div class="v" id="benchmarkReturn">—</div><div class="delta" id="benchmarkLabel">SPY</div></div>
+  <div class="mini"><div class="k">Largest position</div><div class="v" id="largestPosition">—</div><div class="delta" id="largestWeight">—</div></div>
+</div>
+
+<div class="grid" style="margin-top:14px">
+  <section class="panel pad">
+    <h3 class="section-title">PORTFOLIO HEALTH</h3>
+    <div class="score" id="scoreBig">—</div>
+    <div class="progress"><div id="scoreBar" style="width:0"></div></div>
+    <div id="components" style="margin-top:13px"></div>
+    <div id="guardrails" style="margin-top:12px"></div>
+    <div class="actions">
+      <button class="btn green" onclick="evaluateAndSave()">Evaluar y guardar snapshot</button>
+      <button class="btn" onclick="loadEverything()">Actualizar</button>
+    </div>
+    <div id="healthError" class="error"></div>
+  </section>
+
+  <aside class="panel pad">
+    <h3 class="section-title">INVESTMENT CONSTITUTION</h3>
+    <div class="callout">Tus agentes y futuros modelos deben respetar estas reglas antes de recomendar más riesgo.</div>
+    <div class="formgrid" style="margin-top:12px">
+      <div class="field"><label>Horizonte (años)</label><input id="cHorizon" type="number" min="1" max="60"></div>
+      <div class="field"><label>Fondo emergencia objetivo (meses)</label><input id="cEmergencyMonths" type="number" min="0" max="36"></div>
+      <div class="field"><label>Fondo emergencia listo</label><select id="cEmergencyReady"><option value="false">No</option><option value="true">Sí</option></select></div>
+      <div class="field"><label>Máx. posición individual %</label><input id="cSingle" type="number" min="1" max="100"></div>
+      <div class="field"><label>Máx. sector %</label><input id="cSector" type="number" min="1" max="100"></div>
+      <div class="field"><label>Máx. Opportunity %</label><input id="cOpportunity" type="number" min="0" max="100"></div>
+      <div class="field"><label>Máx. Gold Lab %</label><input id="cGold" type="number" min="0" max="100"></div>
+      <div class="field"><label>Drawdown tolerable %</label><input id="cDrawdown" type="number" min="1" max="100"></div>
+      <div class="field"><label>Leverage</label><select id="cLeverage"><option>NONE</option><option>LIMITED</option><option>ALLOWED</option></select></div>
+      <div class="field"><label>Benchmark</label><input id="cBenchmark" maxlength="20"></div>
+      <div class="field"><label>Ventana benchmark (días)</label><input id="cBenchmarkDays" type="number" min="20" max="2520"></div>
+      <div class="field"><label>Cooldown decisión (horas)</label><input id="cCooldown" type="number" min="0" max="720"></div>
+    </div>
+    <div class="actions"><button class="btn green" onclick="saveConstitution()">Guardar Constitución</button></div>
+    <div id="constitutionState" class="muted" style="margin-top:7px"></div>
+  </aside>
+</div>
+
+<div class="grid" style="margin-top:14px">
+  <section class="panel pad">
+    <h3 class="section-title">REBALANCING BANDS</h3>
+    <div class="scroll"><table class="table">
+      <thead><tr><th>Bucket</th><th>Actual</th><th>Target</th><th>Banda</th><th>Drift</th><th>Estado</th><th>Acción</th></tr></thead>
+      <tbody id="bandsBody"></tbody>
+    </table></div>
+    <div class="narrative" style="margin-top:12px"><strong>Contributions first.</strong> Si un bucket está infraponderado, el sistema prioriza capital nuevo antes de sugerir ventas.</div>
+  </section>
+  <aside class="panel pad">
+    <h3 class="section-title">PRÓXIMO APORTE</h3>
+    <div id="contributionPlan"></div>
+    <div class="narrative"><strong>No execution:</strong> estas cantidades son guía de rebalanceo. La decisión y ejecución final siguen siendo manuales.</div>
+  </aside>
+</div>
+
+<div class="grid" style="margin-top:14px">
+  <section class="panel pad">
+    <h3 class="section-title">BENCHMARK & ATTRIBUTION</h3>
+    <div id="benchmarkNarrative" class="narrative"></div>
+    <div class="scroll"><table class="table">
+      <thead><tr><th>Bucket</th><th>Valor</th><th>Cost basis</th><th>P&L</th><th>Return</th><th>Peso</th><th>Contribución P&L</th></tr></thead>
+      <tbody id="attributionBody"></tbody>
+    </table></div>
+  </section>
+  <aside class="panel pad">
+    <h3 class="section-title">TOP POSITIONS</h3>
+    <div id="topPositions"></div>
+  </aside>
+</div>
+
+<section class="panel pad" style="margin-top:14px">
+  <h3 class="section-title">LONGITUDINAL MEMORY</h3>
+  <div id="historyState" class="narrative">Todavía no hay snapshots suficientes para TWR real. Cada evaluación diaria construye esa historia.</div>
+  <div class="scroll"><table class="table">
+    <thead><tr><th>Fecha</th><th>Portfolio</th><th>Cost basis</th><th>Unrealized P&L</th><th>Benchmark</th></tr></thead>
+    <tbody id="historyBody"></tbody>
+  </table></div>
+</section>
+</main></div>
+
+<script>
+const sb=window.supabase.createClient("https://tlyczyfsboqrtrdpwizp.supabase.co","sb_publishable_gMTGwNPjdwgNuzzRPpUPyA_ezrPfCrT");
+let session=null,positions=[],settings=null,constitution=null,quotes={},health=null,snapshots=[];
+const E=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const money=v=>'$'+Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2});
+const pct=v=>v==null?'—':(Number(v)*100).toFixed(1)+'%';
+const signed=v=>v==null?'—':((Number(v)>=0?'+':'')+(Number(v)*100).toFixed(1)+'%');
+const defaultConstitution={
+  horizon_years:10,emergency_fund_months:6,emergency_fund_ready:false,
+  max_single_position_pct:.15,max_sector_pct:.30,max_opportunity_pct:.20,max_gold_lab_pct:.05,
+  max_drawdown_tolerance_pct:.25,leverage_policy:'NONE',rebalance_method:'CONTRIBUTIONS_FIRST',
+  core_band_pp:.05,opportunity_band_pp:.03,cash_band_pp:.03,gold_lab_band_pp:.02,
+  benchmark_symbol:'SPY',benchmark_window_days:60,decision_cooldown_hours:24,
+  opportunity_requires_thesis:true,gold_live_allowed:false
+};
+
+async function boot(){
+  const x=await sb.auth.getSession();session=x.data.session;
+  if(!session){E('authWarn').style.display='block';return}
+  E('main').style.display='block';
+  await loadEverything();
+}
+
+async function ensureConstitution(){
+  let {data,error}=await sb.from('tfm_investment_constitution').select('*').maybeSingle();
+  if(error)throw error;
+  if(!data){
+    const created=await sb.from('tfm_investment_constitution').insert(defaultConstitution).select().single();
+    if(created.error)throw created.error;data=created.data;
+  }
+  constitution=data;
+}
+
+async function loadEverything(){
+  E('healthError').textContent='';
+  try{
+    await ensureConstitution();
+    const q=await Promise.all([
+      sb.from('tfm_investment_positions').select('*').eq('is_active',true).order('created_at'),
+      sb.from('tfm_investment_settings').select('*').maybeSingle(),
+      sb.from('tfm_portfolio_snapshots').select('*').order('snapshot_date',{ascending:false}).limit(30)
+    ]);
+    if(q[0].error)throw q[0].error;if(q[1].error)throw q[1].error;if(q[2].error)throw q[2].error;
+    positions=q[0].data||[];settings=q[1].data;snapshots=q[2].data||[];
+    const syms=[...new Set(positions.filter(p=>p.asset_class!=='cash'&&!p.manual_price).map(p=>String(p.symbol||'').toUpperCase()).filter(Boolean))];
+    quotes={};
+    if(syms.length){
+      const r=await fetch('/api/quotes?symbols='+encodeURIComponent(syms.join(',')),{cache:'no-store'});
+      if(r.ok){const d=await r.json();quotes=d.quotes||{}}
+    }
+    fillConstitution();
+    await evaluate(false);
+    renderHistory();
+  }catch(e){E('healthError').textContent=e.message||String(e)}
+}
+
+function priceFor(p){
+  if(p.manual_price!=null)return Number(p.manual_price);
+  if(p.asset_class==='cash')return 1;
+  return Number(quotes[String(p.symbol).toUpperCase()]?.price||p.avg_cost||0);
+}
+function payload(){
+  return {
+    positions:positions.map(p=>({
+      symbol:String(p.symbol||'').toUpperCase(),bucket:p.bucket,quantity:Number(p.quantity||0),
+      market_price:priceFor(p),avg_cost:p.avg_cost==null?null:Number(p.avg_cost),asset_class:p.asset_class||'other'
+    })),
+    target_weights:{
+      CORE:Number(settings?.target_core??.70),OPPORTUNITY:Number(settings?.target_opportunity??.15),
+      GOLD_LAB:Number(settings?.target_gold_lab??.05),CASH:Number(settings?.target_cash??.10)
+    },
+    monthly_contribution:Number(settings?.monthly_contribution||0),
+    base_currency:settings?.base_currency||'USD',
+    constitution:{
+      horizon_years:Number(constitution.horizon_years),emergency_fund_months:Number(constitution.emergency_fund_months),
+      emergency_fund_ready:!!constitution.emergency_fund_ready,max_single_position_pct:Number(constitution.max_single_position_pct),
+      max_sector_pct:Number(constitution.max_sector_pct),max_opportunity_pct:Number(constitution.max_opportunity_pct),
+      max_gold_lab_pct:Number(constitution.max_gold_lab_pct),max_drawdown_tolerance_pct:Number(constitution.max_drawdown_tolerance_pct),
+      leverage_policy:constitution.leverage_policy,rebalance_method:constitution.rebalance_method,
+      core_band_pp:Number(constitution.core_band_pp),opportunity_band_pp:Number(constitution.opportunity_band_pp),
+      cash_band_pp:Number(constitution.cash_band_pp),gold_lab_band_pp:Number(constitution.gold_lab_band_pp),
+      benchmark_symbol:constitution.benchmark_symbol,benchmark_window_days:Number(constitution.benchmark_window_days),
+      decision_cooldown_hours:Number(constitution.decision_cooldown_hours),
+      opportunity_requires_thesis:!!constitution.opportunity_requires_thesis,gold_live_allowed:!!constitution.gold_live_allowed
+    }
+  };
+}
+
+async function evaluate(save){
+  const body=payload();
+  const r=await fetch('/api/portfolio-health',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(await r.text());
+  health=await r.json();renderHealth();
+  if(save)await persistHealth(body);
+}
+
+function renderHealth(){
+  E('healthScore').textContent=health.health_score+'/100';E('healthStatus').textContent=health.health_status;
+  E('scoreBig').textContent=health.health_score+' / 100';E('scoreBar').style.width=health.health_score+'%';
+  E('portfolioValue').textContent=money(health.portfolio_value);E('portfolioReturn').textContent=signed(health.portfolio_cost_basis_return);
+  E('benchmarkReturn').textContent=signed(health.benchmark_return);E('benchmarkLabel').textContent=health.benchmark_symbol+' · '+constitution.benchmark_window_days+' sessions context';
+  const top=health.position_metrics?.[0];E('largestPosition').textContent=top?.symbol||'—';E('largestWeight').textContent=top?pct(top.portfolio_weight):'—';
+
+  const labels={core_integrity:'Core integrity',allocation_discipline:'Allocation discipline',concentration_discipline:'Concentration discipline',speculation_discipline:'Speculation discipline',financial_resilience:'Financial resilience'};
+  const maxes={core_integrity:25,allocation_discipline:25,concentration_discipline:25,speculation_discipline:15,financial_resilience:10};
+  E('components').innerHTML=Object.entries(health.component_scores||{}).map(([k,v])=>'<div class="component"><span>'+esc(labels[k]||k)+'</span><strong>'+v+' / '+maxes[k]+'</strong></div>').join('');
+  E('guardrails').innerHTML=(health.guardrails||[]).map(x=>'<div class="narrative">'+esc(x)+'</div>').join('')||'<div class="narrative good"><strong>No structural guardrail is currently breached.</strong></div>';
+
+  const badge=x=>x==='IN_BAND'?'inband':x==='UNDERWEIGHT'?'under':'over';
+  E('bandsBody').innerHTML=(health.rebalancing||[]).map(x=>'<tr><td><b>'+esc(x.bucket)+'</b></td><td>'+pct(x.actual_weight)+'</td><td>'+pct(x.target_weight)+'</td><td>'+pct(x.lower_band)+'–'+pct(x.upper_band)+'</td><td>'+Number(x.drift_pp).toFixed(1)+' pp</td><td><span class="pill '+badge(x.state)+'">'+esc(x.state)+'</span></td><td>'+esc(x.action)+'</td></tr>').join('');
+
+  E('contributionPlan').innerHTML=(health.contribution_priority||[]).map(x=>'<div class="narrative"><strong>'+esc(x.bucket)+'</strong><span style="float:right">'+money(x.amount)+'</span><div class="muted">'+esc(x.reason)+'</div></div>').join('');
+
+  const excess=health.excess_vs_benchmark_context;
+  E('benchmarkNarrative').innerHTML='<strong>Context only:</strong> current-holdings cost-basis return '+signed(health.portfolio_cost_basis_return)+' vs '+esc(health.benchmark_symbol)+' '+signed(health.benchmark_return)+(excess==null?'':', difference '+signed(excess))+'. <span class="muted">'+esc(health.diagnostics?.benchmark_warning||'')+'</span>';
+  const buckets=health.attribution?.by_bucket||{};
+  E('attributionBody').innerHTML=Object.entries(buckets).map(([b,x])=>'<tr><td><b>'+esc(b)+'</b></td><td>'+money(x.market_value)+'</td><td>'+money(x.cost_basis)+'</td><td class="'+(Number(x.unrealized_pnl)>=0?'good':'bad')+'">'+money(x.unrealized_pnl)+'</td><td>'+signed(x.return_pct)+'</td><td>'+pct(x.portfolio_weight)+'</td><td>'+signed(x.pnl_contribution)+'</td></tr>').join('');
+  E('topPositions').innerHTML=(health.position_metrics||[]).slice(0,8).map(p=>'<div class="narrative"><strong>'+esc(p.symbol)+'</strong><span style="float:right">'+pct(p.portfolio_weight)+'</span><div class="muted">'+esc(p.bucket)+' · '+money(p.market_value)+' · P&L '+money(p.unrealized_pnl)+'</div></div>').join('')||'<div class="muted">Aún no hay posiciones.</div>';
+}
+
+async function persistHealth(input){
+  const run=await sb.from('tfm_portfolio_health_runs').insert({
+    engine_version:health.engine_version,health_score:health.health_score,health_status:health.health_status,
+    portfolio_value:health.portfolio_value,benchmark_symbol:health.benchmark_symbol,benchmark_return:health.benchmark_return,
+    portfolio_cost_basis_return:health.portfolio_cost_basis_return,input_snapshot:input,output_snapshot:health
+  });
+  if(run.error)throw run.error;
+  const snap=await sb.from('tfm_portfolio_snapshots').upsert({
+    snapshot_date:new Date().toISOString().slice(0,10),base_currency:input.base_currency,total_value:health.portfolio_value,
+    total_cost_basis:health.total_cost_basis,unrealized_pnl:health.unrealized_pnl,benchmark_symbol:health.benchmark_symbol,
+    benchmark_price:health.benchmark_price,bucket_values:health.bucket_values,position_values:health.position_metrics,
+    metrics:{health_score:health.health_score,health_status:health.health_status,portfolio_cost_basis_return:health.portfolio_cost_basis_return,benchmark_return:health.benchmark_return}
+  },{onConflict:'owner_id,snapshot_date'});
+  if(snap.error)throw snap.error;
+  E('healthError').textContent='Snapshot guardado. La serie longitudinal empieza a construir TWR/attribution real.';
+  await loadEverything();
+}
+
+async function evaluateAndSave(){try{E('healthError').textContent='Evaluando…';await evaluate(true)}catch(e){E('healthError').textContent=e.message||String(e)}}
+
+function fillConstitution(){
+  E('cHorizon').value=constitution.horizon_years;E('cEmergencyMonths').value=constitution.emergency_fund_months;
+  E('cEmergencyReady').value=String(constitution.emergency_fund_ready);E('cSingle').value=Number(constitution.max_single_position_pct)*100;
+  E('cSector').value=Number(constitution.max_sector_pct)*100;E('cOpportunity').value=Number(constitution.max_opportunity_pct)*100;
+  E('cGold').value=Number(constitution.max_gold_lab_pct)*100;E('cDrawdown').value=Number(constitution.max_drawdown_tolerance_pct)*100;
+  E('cLeverage').value=constitution.leverage_policy;E('cBenchmark').value=constitution.benchmark_symbol;
+  E('cBenchmarkDays').value=constitution.benchmark_window_days;E('cCooldown').value=constitution.decision_cooldown_hours;
+}
+
+async function saveConstitution(){
+  const p={
+    horizon_years:Number(E('cHorizon').value),emergency_fund_months:Number(E('cEmergencyMonths').value),
+    emergency_fund_ready:E('cEmergencyReady').value==='true',max_single_position_pct:Number(E('cSingle').value)/100,
+    max_sector_pct:Number(E('cSector').value)/100,max_opportunity_pct:Number(E('cOpportunity').value)/100,
+    max_gold_lab_pct:Number(E('cGold').value)/100,max_drawdown_tolerance_pct:Number(E('cDrawdown').value)/100,
+    leverage_policy:E('cLeverage').value,benchmark_symbol:E('cBenchmark').value.trim().toUpperCase()||'SPY',
+    benchmark_window_days:Number(E('cBenchmarkDays').value),decision_cooldown_hours:Number(E('cCooldown').value),
+    updated_at:new Date().toISOString()
+  };
+  const x=await sb.from('tfm_investment_constitution').update(p).eq('owner_id',session.user.id).select().single();
+  if(x.error){E('constitutionState').textContent=x.error.message;return}
+  constitution=x.data;E('constitutionState').textContent='Constitución guardada. Recalculando portfolio…';await evaluate(false);
+}
+
+function renderHistory(){
+  if(!snapshots.length){E('historyBody').innerHTML='<tr><td colspan="5" class="muted">Sin snapshots todavía.</td></tr>';return}
+  E('historyBody').innerHTML=snapshots.map(s=>'<tr><td>'+esc(s.snapshot_date)+'</td><td>'+money(s.total_value)+'</td><td>'+money(s.total_cost_basis)+'</td><td>'+money(s.unrealized_pnl)+'</td><td>'+esc(s.benchmark_symbol)+' '+(s.metrics?.benchmark_return==null?'—':signed(s.metrics.benchmark_return))+'</td></tr>').join('');
+  if(snapshots.length>=2)E('historyState').innerHTML='<strong>'+snapshots.length+' snapshots</strong> disponibles. A medida que registres aportes y snapshots, podremos migrar de cost-basis context a TWR/MWR real.';
+}
+boot();
+</script>
+</body></html>
