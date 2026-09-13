@@ -56,3 +56,8 @@ def test_learning_path_is_free_and_ordered():
     assert [x["sequence"] for x in LEARNING_PATH] == sorted(
         x["sequence"] for x in LEARNING_PATH
     )
+
+
+def test_source_finder_prioritizes_investor_education_for_asset_allocation():
+    sources = find_sources("asset allocation portfolio")
+    assert sources[0]["key"] in {"investor_gov", "mit_ocw"}
