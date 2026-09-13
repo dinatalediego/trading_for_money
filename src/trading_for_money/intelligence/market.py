@@ -175,7 +175,7 @@ SOURCE_REGISTRY = [
         "description": "Educación del inversor de la SEC: riesgo, diversificación, productos y protección.",
         "base_url": "https://www.investor.gov/introduction-investing",
         "search_template": "https://www.investor.gov/search?keys={query}",
-        "keywords": {"learn", "aprender", "risk", "riesgo", "etf", "diversification", "diversificación", "fees", "costos"},
+        "keywords": {"learn", "aprender", "risk", "riesgo", "etf", "diversification", "diversificación", "fees", "costos", "asset", "allocation", "portfolio", "cartera"},
     },
     {
         "key": "ibkr_academy",
@@ -195,7 +195,7 @@ SOURCE_REGISTRY = [
         "description": "Finance Theory I: valuación, renta fija, equities, riesgo, CAPM y mercados eficientes.",
         "base_url": "https://ocw.mit.edu/courses/15-401-finance-theory-i-fall-2008/",
         "search_template": "https://ocw.mit.edu/search/?q={query}",
-        "keywords": {"valuation", "valuación", "finance", "finanzas", "capm", "portfolio", "present value", "valor presente"},
+        "keywords": {"valuation", "valuación", "finance", "finanzas", "capm", "portfolio", "asset", "allocation", "present value", "valor presente"},
     },
     {
         "key": "us_treasury",
