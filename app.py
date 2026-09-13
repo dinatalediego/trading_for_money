@@ -214,7 +214,7 @@ async def health():
     return {
         "ok": True,
         "service": "gold-scalping-intelligence",
-        "version": "0.8.0",
+        "version": "0.8.2",
         "execution": "paper-only",
     }
 
@@ -224,7 +224,23 @@ async def gold_snapshot(
     interval: str = Query(default="1m", pattern="^(1m|2m|5m|15m)$"),
     range_: str = Query(default="1d", alias="range", pattern="^(1d|5d|1mo)$"),
 ):
-    bars, meta = await fetch_ohlcv(interval=interval, range_=range_)
+    effective_range = range_
+    fallback_reason = None
+
+    try:
+        bars, meta = await fetch_ohlcv(interval=interval, range_=range_)
+    except HTTPException as exc:
+        if range_ != "1d":
+            raise
+        fallback_reason = str(exc.detail)
+        effective_range = "5d"
+        bars, meta = await fetch_ohlcv(interval=interval, range_=effective_range)
+
+    if len(bars) < 65 and range_ == "1d":
+        fallback_reason = fallback_reason or f"only {len(bars)} bars returned"
+        effective_range = "5d"
+        bars, meta = await fetch_ohlcv(interval=interval, range_=effective_range)
+
     if len(bars) < 65:
         raise HTTPException(
             status_code=422,
@@ -239,6 +255,10 @@ async def gold_snapshot(
         "research_notice": (
             "GC=F is a research proxy. This feed is not broker execution-grade and may be delayed."
         ),
+        "requested_range": range_,
+        "effective_range": effective_range,
+        "fallback_used": effective_range != range_,
+        "fallback_reason": fallback_reason,
         "latest": latest,
         "bars": bar_records(signals),
     }
