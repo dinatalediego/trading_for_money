@@ -246,17 +246,41 @@ function showTab(tab){
   if(tab==='gold') loadGold();
 }
 async function login(){
-  el('authError').textContent='';
-  const {data,error}=await sb.auth.signInWithPassword({email:el('email').value,password:el('password').value});
-  if(error){el('authError').textContent=error.message;return}
-  session=data.session; boot();
+  const msg=el('authError');
+  msg.textContent='Conectando…';
+  try{
+    const email=el('email').value.trim();
+    const password=el('password').value;
+    if(!email||!password){msg.textContent='Ingresa email y contraseña.';return}
+    const {data,error}=await sb.auth.signInWithPassword({email,password});
+    if(error){msg.textContent=error.message;return}
+    session=data.session;
+    msg.textContent='Acceso correcto. Cargando Capital OS…';
+    await boot();
+  }catch(e){
+    msg.textContent='No se pudo iniciar sesión: '+(e?.message||String(e));
+  }
 }
 async function signup(){
-  el('authError').textContent='';
-  const {data,error}=await sb.auth.signUp({email:el('email').value,password:el('password').value});
-  if(error){el('authError').textContent=error.message;return}
-  if(!data.session){el('authError').textContent='Cuenta creada. Revisa tu correo si Supabase solicita confirmación.';return}
-  session=data.session; boot();
+  const msg=el('authError');
+  msg.textContent='Creando cuenta…';
+  try{
+    const email=el('email').value.trim();
+    const password=el('password').value;
+    if(!email||!password){msg.textContent='Ingresa email y contraseña.';return}
+    if(password.length<6){msg.textContent='Usa una contraseña de al menos 6 caracteres.';return}
+    const {data,error}=await sb.auth.signUp({email,password});
+    if(error){msg.textContent=error.message;return}
+    if(!data.session){
+      msg.textContent='Cuenta creada. Revisa tu correo y confirma el acceso; luego vuelve a pulsar Entrar.';
+      return;
+    }
+    session=data.session;
+    msg.textContent='Cuenta creada. Cargando Capital OS…';
+    await boot();
+  }catch(e){
+    msg.textContent='No se pudo crear la cuenta: '+(e?.message||String(e));
+  }
 }
 async function logout(){await sb.auth.signOut();location.reload()}
 async function ensureDefaults(){
@@ -552,7 +576,8 @@ function renderGold(){
     `<div class="narrative"><strong>Últimas decisiones:</strong> BUY ${buy}, SELL ${sell}, FLAT ${flat}. Permanecer FLAT también cuenta como disciplina; el motor no fuerza operaciones.</div>`+
     `<div class="narrative"><strong>Estado actual:</strong> señal ${x.signal}, long score ${x.long_score}/100, short score ${x.short_score}/100. Feed: ${x.feed_state}.</div>`;
   el('goldTradesBody').innerHTML=goldState.trades.length?goldState.trades.map(t=>`<tr><td>${new Date(t.opened_at).toLocaleString()}</td><td><b>${t.side}</b></td><td>${t.status}</td><td>${fmt(t.entry_price)}</td><td>${fmt(t.exit_price)}</td><td class="${Number(t.pnl_r)>=0?'good':'bad'}">${t.pnl_r==null?'—':fmt(t.pnl_r)+'R'}</td><td>${esc(t.exit_reason||'—')}</td></tr>`).join(''):'<tr><td colspan="7" class="muted">Aún no hay paper trades persistentes.</td></tr>';
-  renderCapitalCouncil();\n  el('decisionsList').innerHTML=decisions.length?decisions.slice(0,8).map(d=>`<div class="narrative"><strong>${d.action}</strong> · confidence ${d.confidence}/100<div class="muted">${new Date(d.bar_time).toLocaleString()} · L ${d.long_score} / S ${d.short_score}</div></div>`).join(''):'<div class="muted">Sin decisiones registradas.</div>';
+  renderCapitalCouncil();
+  el('decisionsList').innerHTML=decisions.length?decisions.slice(0,8).map(d=>`<div class="narrative"><strong>${d.action}</strong> · confidence ${d.confidence}/100<div class="muted">${new Date(d.bar_time).toLocaleString()} · L ${d.long_score} / S ${d.short_score}</div></div>`).join(''):'<div class="muted">Sin decisiones registradas.</div>';
 }
 (async()=>{
   const {data}=await sb.auth.getSession();session=data.session;
