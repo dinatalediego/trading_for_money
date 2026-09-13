@@ -896,11 +896,23 @@ setInterval(load,15000);setInterval(loadBacktest,5*60*1000);
 
 
 CAPITAL_OS_HTML = (ROOT / "web" / "capital_os.html").read_text(encoding="utf-8")
+MARKET_INTELLIGENCE_HTML = (ROOT / "web" / "market_intelligence.html").read_text(encoding="utf-8")
+LEARNING_HTML = (ROOT / "web" / "learning.html").read_text(encoding="utf-8")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def capital_os():
     return HTMLResponse(CAPITAL_OS_HTML)
+
+
+@app.get("/intelligence", response_class=HTMLResponse)
+async def intelligence_dashboard():
+    return HTMLResponse(MARKET_INTELLIGENCE_HTML)
+
+
+@app.get("/learning", response_class=HTMLResponse)
+async def learning_dashboard():
+    return HTMLResponse(LEARNING_HTML)
 
 
 @app.get("/gold", response_class=HTMLResponse)
