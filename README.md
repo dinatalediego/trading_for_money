@@ -1,8 +1,16 @@
 # trading_for_money
 
-Laboratorio de **market intelligence, trading cuantitativo y aprendizaje de ejecución**.
+**Capital OS** es un sistema personal de inversión, aprendizaje y research cuantitativo diseñado para convertir aportes pequeños y recurrentes en un proceso disciplinado de construcción patrimonial.
 
-> Objetivo: construir un sistema que observe mercados, explique qué está siendo premiado o castigado, convierta hipótesis en experimentos reproducibles y aprenda con paper trading antes de cualquier uso real.
+Rutas principales en producción:
+
+- `/` — Investment Engine + Capital Allocation
+- `/health` — Investment Constitution + Portfolio Health + Benchmark & Attribution + Rebalancing Bands
+- `/intelligence` — Market Intelligence + Daily Investor Brief + Source Finder
+- `/learning` — Learning Mode
+- `/gold` — Gold Alpha Lab (paper/research)
+
+> North star: **sobrevivir, aportar consistentemente y permanecer invertido el tiempo suficiente para que el compounding trabaje.** El sistema no ejecuta órdenes reales.
 
 ## Dos líneas del proyecto
 
