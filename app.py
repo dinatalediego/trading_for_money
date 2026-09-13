@@ -272,7 +272,7 @@ async def fetch_fred_series(series_id: str) -> dict:
     meta = FRED_SERIES[series_id]
     url = "https://fred.stlouisfed.org/graph/fredgraph.csv"
     try:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             response = await client.get(
                 url,
                 params={"id": series_id},
@@ -304,7 +304,7 @@ async def fetch_fred_series(series_id: str) -> dict:
         return {
             "series_id": series_id,
             "label": meta["label"],
-            "error": str(exc),
+            "error": repr(exc),
             "source": "FRED",
             "source_url": meta["source_url"],
         }
@@ -327,17 +327,32 @@ async def fetch_market_news(query: str, limit: int = 6) -> list[dict]:
             response.raise_for_status()
             payload = response.json()
         out = []
-        for item in (payload.get("news") or [])[:limit]:
+        finance_terms = (
+            "market", "stock", "shares", "s&p", "nasdaq", "fed", "federal reserve",
+            "treasury", "yield", "rate", "inflation", "economy", "economic",
+            "gold", "dollar", "bond", "earnings", "investor", "etf", "equity",
+            "commodit", "oil", "company", "companies",
+        )
+        now_ts = int(pd.Timestamp.now(tz="UTC").timestamp())
+        for item in (payload.get("news") or []):
+            title = (item.get("title") or "").strip()
+            published = item.get("providerPublishTime")
+            age_ok = not published or (now_ts - int(published)) <= 3 * 24 * 3600
+            relevant = any(term in title.lower() for term in finance_terms)
+            if not (age_ok and relevant):
+                continue
             out.append(
                 {
-                    "title": item.get("title"),
+                    "title": title,
                     "publisher": item.get("publisher"),
                     "url": item.get("link"),
-                    "published_at": item.get("providerPublishTime"),
+                    "published_at": published,
                     "type": item.get("type"),
                     "source": "Yahoo Finance search",
                 }
             )
+            if len(out) >= limit:
+                break
         return out
     except Exception:
         return []
@@ -386,8 +401,8 @@ async def build_market_intelligence(extra_symbols: list[str] | None = None) -> d
         *(fetch_fred_series(series_id) for series_id in FRED_SERIES)
     )
     news_results = await asyncio.gather(
-        fetch_market_news("stock market", 5),
-        fetch_market_news("gold market", 5),
+        fetch_market_news("S&P 500 Nasdaq Federal Reserve markets", 6),
+        fetch_market_news("gold dollar Treasury yields Federal Reserve", 6),
     )
     headlines = []
     seen = set()
