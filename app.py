@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import io
 import math
 import sys
 import time
@@ -25,6 +27,14 @@ from trading_for_money.allocation import (
     GoldEvidence,
     GoalInput,
     build_allocation_plan,
+)
+from trading_for_money.intelligence import (
+    DEFAULT_MARKET_UNIVERSE,
+    LEARNING_PATH,
+    build_daily_brief,
+    build_market_regime,
+    compute_asset_metrics,
+    find_sources,
 )
 
 
@@ -204,7 +214,7 @@ async def health():
     return {
         "ok": True,
         "service": "gold-scalping-intelligence",
-        "version": "0.7.0",
+        "version": "0.8.0",
         "execution": "paper-only",
     }
 
@@ -231,6 +241,237 @@ async def gold_snapshot(
         ),
         "latest": latest,
         "bars": bar_records(signals),
+    }
+
+
+FRED_SERIES = {
+    "DGS10": {
+        "label": "US 10Y Treasury",
+        "unit": "%",
+        "source_url": "https://fred.stlouisfed.org/series/DGS10",
+    },
+    "DFII10": {
+        "label": "US 10Y Real Yield",
+        "unit": "%",
+        "source_url": "https://fred.stlouisfed.org/series/DFII10",
+    },
+    "DFF": {
+        "label": "Effective Fed Funds Rate",
+        "unit": "%",
+        "source_url": "https://fred.stlouisfed.org/series/DFF",
+    },
+    "T10Y2Y": {
+        "label": "10Y–2Y Treasury Spread",
+        "unit": "pp",
+        "source_url": "https://fred.stlouisfed.org/series/T10Y2Y",
+    },
+}
+
+
+async def fetch_fred_series(series_id: str) -> dict:
+    meta = FRED_SERIES[series_id]
+    url = "https://fred.stlouisfed.org/graph/fredgraph.csv"
+    try:
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+            response = await client.get(
+                url,
+                params={"id": series_id},
+                headers={"user-agent": "capital-os-market-intelligence/0.8"},
+            )
+            response.raise_for_status()
+        frame = pd.read_csv(io.StringIO(response.text))
+        if series_id not in frame.columns:
+            raise ValueError("series column missing")
+        values = pd.to_numeric(frame[series_id], errors="coerce").dropna()
+        if values.empty:
+            raise ValueError("no numeric observations")
+        latest_idx = values.index[-1]
+        latest = float(values.iloc[-1])
+        previous = float(values.iloc[-2]) if len(values) > 1 else latest
+        date_value = str(frame.loc[latest_idx, frame.columns[0]])
+        return {
+            "series_id": series_id,
+            "label": meta["label"],
+            "value": latest,
+            "previous": previous,
+            "change": latest - previous,
+            "unit": meta["unit"],
+            "observation_date": date_value,
+            "source": "FRED",
+            "source_url": meta["source_url"],
+        }
+    except Exception as exc:
+        return {
+            "series_id": series_id,
+            "label": meta["label"],
+            "error": str(exc),
+            "source": "FRED",
+            "source_url": meta["source_url"],
+        }
+
+
+async def fetch_market_news(query: str, limit: int = 6) -> list[dict]:
+    url = "https://query1.finance.yahoo.com/v1/finance/search"
+    try:
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+            response = await client.get(
+                url,
+                params={
+                    "q": query,
+                    "quotesCount": 0,
+                    "newsCount": min(limit, 10),
+                    "enableFuzzyQuery": "false",
+                },
+                headers={"user-agent": "capital-os-market-intelligence/0.8"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        out = []
+        for item in (payload.get("news") or [])[:limit]:
+            out.append(
+                {
+                    "title": item.get("title"),
+                    "publisher": item.get("publisher"),
+                    "url": item.get("link"),
+                    "published_at": item.get("providerPublishTime"),
+                    "type": item.get("type"),
+                    "source": "Yahoo Finance search",
+                }
+            )
+        return out
+    except Exception:
+        return []
+
+
+async def build_market_intelligence(extra_symbols: list[str] | None = None) -> dict:
+    universe = dict(DEFAULT_MARKET_UNIVERSE)
+    for symbol in extra_symbols or []:
+        if symbol and symbol not in universe and len(universe) < 24:
+            universe[symbol] = {"label": symbol, "group": "watchlist"}
+
+    async def one(symbol: str, meta: dict):
+        try:
+            bars, provider_meta = await fetch_ohlcv(
+                symbol,
+                interval="1d",
+                range_="6mo",
+            )
+            metrics = compute_asset_metrics(
+                bars,
+                symbol=symbol,
+                label=meta["label"],
+                group=meta["group"],
+            )
+            metrics["currency"] = provider_meta.get("currency", "USD")
+            metrics["exchange"] = provider_meta.get("exchangeName")
+            metrics["source"] = "Yahoo Finance research feed"
+            metrics["source_url"] = f"https://finance.yahoo.com/quote/{quote(symbol, safe='')}/"
+            return metrics
+        except Exception as exc:
+            return {
+                "symbol": symbol,
+                "label": meta["label"],
+                "group": meta["group"],
+                "error": str(exc),
+            }
+
+    metric_results = await asyncio.gather(
+        *(one(symbol, meta) for symbol, meta in universe.items())
+    )
+    metrics = [x for x in metric_results if "error" not in x]
+    errors = [x for x in metric_results if "error" in x]
+    regime = build_market_regime(metrics)
+
+    macro_results = await asyncio.gather(
+        *(fetch_fred_series(series_id) for series_id in FRED_SERIES)
+    )
+    news_results = await asyncio.gather(
+        fetch_market_news("stock market", 5),
+        fetch_market_news("gold market", 5),
+    )
+    headlines = []
+    seen = set()
+    for group in news_results:
+        for item in group:
+            key = (item.get("title"), item.get("url"))
+            if key not in seen:
+                seen.add(key)
+                headlines.append(item)
+    headlines = headlines[:8]
+
+    return {
+        "generated_at": pd.Timestamp.now(tz="UTC").isoformat(),
+        "regime": regime,
+        "assets": metrics,
+        "asset_errors": errors,
+        "macro": macro_results,
+        "headlines": headlines,
+        "provenance": {
+            "market_prices": "Yahoo Finance research feed",
+            "macro": "FRED / Federal Reserve Bank of St. Louis",
+            "news_discovery": "Yahoo Finance search",
+            "method": (
+                "Deterministic metrics from daily closes: 1d/5d/20d/60d returns, "
+                "20d/50d trend and 20d annualized volatility."
+            ),
+        },
+    }
+
+
+@app.get("/api/market-intelligence")
+async def market_intelligence(
+    symbols: str = Query(default="", max_length=180),
+):
+    extra = []
+    for raw in symbols.split(","):
+        symbol = raw.strip().upper()
+        if symbol and symbol not in extra:
+            extra.append(symbol)
+    return await build_market_intelligence(extra[:10])
+
+
+@app.get("/api/daily-brief")
+async def daily_investor_brief(
+    symbols: str = Query(default="", max_length=180),
+):
+    extra = [x.strip().upper() for x in symbols.split(",") if x.strip()][:10]
+    intelligence = await build_market_intelligence(extra)
+    brief = build_daily_brief(
+        intelligence["assets"],
+        intelligence["regime"],
+        macro=intelligence["macro"],
+        headlines=intelligence["headlines"],
+    )
+    brief["generated_at"] = intelligence["generated_at"]
+    brief["provenance"] = intelligence["provenance"]
+    brief["source_shortcuts"] = find_sources(brief["learning_focus"], limit=5)
+    return brief
+
+
+@app.get("/api/source-finder")
+async def source_finder(
+    q: str = Query(default="", max_length=180),
+):
+    return {
+        "query": q,
+        "sources": find_sources(q, limit=8),
+        "principle": (
+            "Prefer primary/official sources for facts and filings; use aggregators "
+            "for discovery, not as the final source of truth."
+        ),
+    }
+
+
+@app.get("/api/learning-path")
+async def learning_path():
+    return {
+        "track": "beginner_investor",
+        "free_first": True,
+        "lessons": LEARNING_PATH,
+        "principle": (
+            "Complete one resource at a time and connect each lesson to a real "
+            "portfolio or paper-trading decision."
+        ),
     }
 
 
@@ -655,11 +896,23 @@ setInterval(load,15000);setInterval(loadBacktest,5*60*1000);
 
 
 CAPITAL_OS_HTML = (ROOT / "web" / "capital_os.html").read_text(encoding="utf-8")
+MARKET_INTELLIGENCE_HTML = (ROOT / "web" / "market_intelligence.html").read_text(encoding="utf-8")
+LEARNING_HTML = (ROOT / "web" / "learning.html").read_text(encoding="utf-8")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def capital_os():
     return HTMLResponse(CAPITAL_OS_HTML)
+
+
+@app.get("/intelligence", response_class=HTMLResponse)
+async def intelligence_dashboard():
+    return HTMLResponse(MARKET_INTELLIGENCE_HTML)
+
+
+@app.get("/learning", response_class=HTMLResponse)
+async def learning_dashboard():
+    return HTMLResponse(LEARNING_HTML)
 
 
 @app.get("/gold", response_class=HTMLResponse)

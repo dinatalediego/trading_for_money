@@ -22,8 +22,8 @@
     .btn{border:1px solid var(--line);background:#111824;color:#fff;padding:9px 12px;border-radius:10px;cursor:pointer;font-weight:700}
     .btn.gold{background:#261f0f;border-color:#80682d;color:var(--gold)} .btn.green{background:#0c251d;border-color:#24604d;color:var(--green)}
     .btn.red{background:#291117;border-color:#71303b;color:var(--red)} .btn.ghost{background:transparent}
-    .tabs{display:flex;gap:8px;margin-bottom:14px}.tab{padding:9px 13px;border-radius:999px;border:1px solid var(--line);
-      background:#0c1118;color:var(--muted);cursor:pointer;font-size:12px;font-weight:800}.tab.active{color:#fff;background:#162033;border-color:#3a4c68}
+    .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}.tab{padding:9px 13px;border-radius:999px;border:1px solid var(--line);
+      background:#0c1118;color:var(--muted);cursor:pointer;font-size:12px;font-weight:800;text-decoration:none}.tab.active{color:#fff;background:#162033;border-color:#3a4c68}
     .panel{background:linear-gradient(180deg,rgba(18,25,36,.96),rgba(10,14,21,.97));border:1px solid var(--line);
       border-radius:18px;box-shadow:0 12px 44px rgba(0,0,0,.22)} .pad{padding:18px}
     .grid{display:grid;grid-template-columns:1.35fr .65fr;gap:14px}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
@@ -80,8 +80,10 @@
 
   <main id="appPanel" class="hidden">
     <div class="tabs">
+      <a class="tab" href="/intelligence">Today + Market Intelligence</a>
       <button id="tabInvestment" class="tab active" onclick="showTab('investment')">Investment Engine</button>
       <button id="tabGold" class="tab" onclick="showTab('gold')">Gold Alpha Engine</button>
+      <a class="tab" href="/learning">Learning Mode</a>
     </div>
 
     <section class="panel pad" style="margin-bottom:14px">
